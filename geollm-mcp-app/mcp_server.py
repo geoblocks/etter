@@ -1,8 +1,8 @@
+import logging
 import os
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import HTTPException
 from langchain_openai import ChatOpenAI
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
@@ -13,6 +13,7 @@ from geollm.parser import GeoFilterParser
 from geollm.spatial import apply_spatial_relation
 
 mcp = FastMCP("GeoLLM MCP Server")
+logger = logging.getLogger("uvicorn")
 
 load_dotenv()
 
