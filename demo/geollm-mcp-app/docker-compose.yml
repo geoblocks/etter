@@ -1,8 +1,8 @@
 services:
   python-backend:
     build:
-      context: ..
-      dockerfile: geollm-mcp-app/Dockerfile
+      context: ../..
+      dockerfile: demo/geollm-mcp-app/Dockerfile
       target: python-backend
     ports:
       - "8000:8000"
@@ -11,13 +11,13 @@ services:
       - SWISSNAMES3D_PATH=/data
       - HOST=0.0.0.0
     volumes:
-      - ../data:/data:ro
+      - ../../data:/data:ro
     restart: unless-stopped
 
   ts-server:
     build:
-      context: ..
-      dockerfile: geollm-mcp-app/Dockerfile
+      context: ../..
+      dockerfile: demo/geollm-mcp-app/Dockerfile
       target: ts-server
     ports:
       - "3002:3002"
