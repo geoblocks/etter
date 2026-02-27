@@ -3,13 +3,13 @@ Main parser class for natural language geographic query parsing.
 """
 
 from collections.abc import AsyncGenerator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 
 from .exceptions import ParsingError
-from .models import GeoQuery
+from .models import GeoQuery, RelationCategory
 from .prompts import build_prompt_template
 from .spatial_config import SpatialRelationConfig
 from .validators import validate_query
@@ -336,9 +336,7 @@ class GeoFilterParser:
         """
         return [self.parse(query) for query in queries]
 
-    def get_available_relations(
-        self, category: Literal["containment", "buffer", "directional"] | None = None
-    ) -> list[str]:
+    def get_available_relations(self, category: RelationCategory | None = None) -> list[str]:
         """
         Get list of available spatial relations.
 

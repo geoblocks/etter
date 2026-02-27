@@ -3,9 +3,10 @@ Spatial relation configuration and built-in relation definitions.
 """
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
 
 from .exceptions import UnknownRelationError
+from .models import RelationCategory
 
 
 @dataclass
@@ -25,7 +26,7 @@ class RelationConfig:
     """
 
     name: str
-    category: Literal["containment", "buffer", "directional"]
+    category: RelationCategory
     description: str
     default_distance_m: float | None = None
     buffer_from: Literal["center", "boundary"] | None = None
@@ -213,7 +214,7 @@ class SpatialRelationConfig:
             )
         return self.relations[name]
 
-    def list_relations(self, category: Literal["containment", "buffer", "directional"] | None = None) -> list[str]:
+    def list_relations(self, category: RelationCategory | None = None) -> list[str]:
         """List available relation names."""
         if category is None:
             return sorted(self.relations.keys())
@@ -224,7 +225,7 @@ class SpatialRelationConfig:
         lines = []
 
         # Group by category
-        for category in ["containment", "buffer", "directional"]:
+        for category in get_args(RelationCategory):
             category_relations = [r for r in self.relations.values() if r.category == category]
             if not category_relations:
                 continue

@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field, model_validator
 
 ConfidenceLevel = Annotated[float, Field(ge=0.0, le=1.0, description="Confidence score between 0 and 1")]
 
+# Spatial relation categories
+RelationCategory = Literal["containment", "buffer", "directional"]
+
 
 class ConfidenceScore(BaseModel):
     """Confidence scores for different aspects of the parsed query."""
@@ -90,7 +93,7 @@ class SpatialRelation(BaseModel):
         description="Spatial relation keyword. Examples: 'in', 'near', 'around', 'north_of', "
         "'on_shores_of', 'in_the_heart_of', etc. Use the exact relation name from the available list."
     )
-    category: Literal["containment", "buffer", "directional"] = Field(
+    category: RelationCategory = Field(
         description="Category of spatial relation. "
         "'containment' = exact boundary matching (in), "
         "'buffer' = proximity or erosion operations (near, around, on_shores_of, in_the_heart_of), "
