@@ -8,7 +8,6 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.fastmcp.utilities.logging import get_logger
 from pydantic import BaseModel
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -21,38 +20,9 @@ mcp = FastMCP("GeoLLM MCP Server")
 logger = get_logger("GeoLLM")
 
 
-class MCPRequestLogger(BaseHTTPMiddleware):
-    """Log MCP requests to help debug client capabilities and message flow."""
-
-    async def dispatch(self, request: Request, call_next):
-        body = await request.body()
-        try:
-            payload = json.loads(body)
-            method = payload.get("method", "")
-            if method:
-                if method == "initialize":
-                    client_caps = payload.get("params", {}).get("capabilities", {})
-                    logger.info(f"[MCP] initialize — client capabilities: {json.dumps(client_caps)}")
-                else:
-                    logger.info(f"[MCP] {method}")
-        except Exception:
-            pass
-
-        # Rebuild the request with the already-consumed body
-        async def receive() -> dict:
-            return {"type": "http.request", "body": body, "more_body": False}
-
-        request = Request(request.scope, receive)
-        return await call_next(request)
-
-
 load_dotenv()
 
 SWISSNAMES3D_PATH = os.getenv("SWISSNAMES3D_PATH", "data")
-RESSOURCE_URI = "ui://parse_geo_query/mcp-app.html"
-# Must match the RESOURCE_MIME_TYPE constant in @modelcontextprotocol/ext-apps
-# Hosts use this specific MIME type to identify MCP App resources
-RESOURCE_MIME_TYPE = "text/html;profile=mcp-app"
 
 if not os.path.exists(SWISSNAMES3D_PATH):
     raise RuntimeError(
@@ -111,7 +81,7 @@ async def _run_geo_query(user_query: str) -> QueryResponse:
     return QueryResponse(query=user_query, geo_query=geo_query.model_dump(), result=feature_collection)
 
 
-@mcp.tool(meta={"ui": {"resourceUri": RESSOURCE_URI}, "ui/resourceUri": RESSOURCE_URI})
+@mcp.tool()
 async def parse_geo_query(user_query: str) -> QueryResponse:
     """
     Transforms natural language location queries into structured geographic filters that can be used by search engines and spatial databases
@@ -142,20 +112,12 @@ async def rest_parse_geo_query(request: Request) -> JSONResponse:
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-@mcp.resource(uri=RESSOURCE_URI, mime_type=RESOURCE_MIME_TYPE)
-async def map_resource() -> str:
-    html_path = os.path.join(os.path.dirname(__file__), "dist", "mcp-app.html")
-    with open(html_path) as f:
-        return f.read()
-
-
 def main():
     import uvicorn
 
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     app = mcp.streamable_http_app()
-    app.add_middleware(MCPRequestLogger)
     uvicorn.run(app, host=host, port=port)
 
 
