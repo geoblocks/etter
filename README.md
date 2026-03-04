@@ -80,7 +80,7 @@ echo "OPENAI_API_KEY=sk-..." > .env
 **Running the server:**
 
 ```bash
-uv run fastapi dev demo/main.py
+uv run uvicorn demo.main:app --port 8000 --reload
 ```
 
 The API will be available at `http://localhost:8000`.
@@ -228,11 +228,11 @@ uv sync --extra dev
 uv run pytest
 
 # Format code
-uv run ruff format geollm tests
-
-# Type checking
-uv run mypy geollm
+uv run ruff format
 
 # Linting
-uv run ruff check geollm tests
+uv run ruff check
+
+# Type checking
+uv run ty check
 ```
