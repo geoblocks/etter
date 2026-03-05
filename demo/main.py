@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import time
@@ -9,16 +10,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_openai import ChatOpenAI
+from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel
 
 from geollm.datasources import SwissNames3DSource
 from geollm.parser import GeoFilterParser
 from geollm.spatial import apply_spatial_relation
 
-app = FastAPI(title="GeoLLM Demo")
-
 # Load environment variables
 load_dotenv()
+
+# MCP server (mounted at /mcp)
+geo_mcp = FastMCP("GeoLLM MCP Server", stateless_http=True, json_response=True)
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with geo_mcp.session_manager.run():
+        yield
+
+
+app = FastAPI(title="GeoLLM Demo", lifespan=lifespan)
 
 # Enable CORS (for development)
 app.add_middleware(
@@ -43,6 +56,50 @@ datasource = SwissNames3DSource(SWISSNAMES3D_PATH)
 # Initialize GeoLLM components
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
 parser = GeoFilterParser(llm, datasource=datasource)
+
+
+@geo_mcp.tool()
+async def parse_geo_query(user_query: str) -> dict[str, Any]:
+    """
+    Transforms natural language location queries into structured geographic filters
+    that can be used by search engines and spatial databases.
+
+    Args:
+        user_query: The natural language query describing the geographic filter,
+            e.g. "Find all locations within walking distance from Zurich main railway station"
+    """
+    geo_query = parser.parse(user_query)
+
+    location_name = geo_query.reference_location.name
+    features = datasource.search(location_name, type=geo_query.reference_location.type)
+
+    if not features:
+        raise ToolError(f"No features found for reference location '{location_name}'")
+
+    result_features = []
+    for i, reference_feature in enumerate(features):
+        search_area = apply_spatial_relation(
+            reference_feature["geometry"], geo_query.spatial_relation, geo_query.buffer_config
+        )
+        result_features.append(
+            {
+                "type": "Feature",
+                "geometry": search_area,
+                "properties": {
+                    "role": "search_area",
+                    "relation": geo_query.spatial_relation.relation,
+                    "reference_index": i,
+                    "reference_name": reference_feature["properties"]["name"],
+                },
+            }
+        )
+        result_features.append(reference_feature)
+
+    return {
+        "query": user_query,
+        "geo_query": geo_query.model_dump(),
+        "result": {"type": "FeatureCollection", "features": result_features},
+    }
 
 
 class QueryRequest(BaseModel):
@@ -215,6 +272,10 @@ async def process_query_stream(request: QueryRequest):
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+
+# Mount MCP server (streamable_http_path="/" so endpoint is /mcp, not /mcp/mcp)
+geo_mcp.settings.streamable_http_path = "/"
+app.mount("/mcp", geo_mcp.streamable_http_app())
 
 # Mount static files (must be last)
 app.mount("/", StaticFiles(directory="demo/static", html=True), name="static")
