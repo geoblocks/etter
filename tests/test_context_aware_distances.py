@@ -13,6 +13,7 @@ These tests require an LLM with the updated context-aware prompt.
 import os
 
 import pytest
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 
 from etter import GeoFilterParser
@@ -20,10 +21,11 @@ from etter import GeoFilterParser
 
 @pytest.fixture
 def parser():
-    """Create parser with OpenAI LLM for testing."""
+    """Create parser with LLM for testing."""
+    load_dotenv()
     # Skip tests if no API key is available
-    if not os.getenv("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY not set")
+    if not os.getenv("LLM_API_KEY"):
+        pytest.skip("LLM_API_KEY not set")
 
     llm = init_chat_model(model="gpt-4o", model_provider="openai", temperature=0)
     return GeoFilterParser(llm=llm)

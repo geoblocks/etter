@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from langchain_openai import ChatOpenAI
+from langchain.chat_models import init_chat_model
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel
@@ -74,7 +74,7 @@ else:
 datasource = CompositeDataSource(*sources)
 
 # Initialize etter components
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = init_chat_model(model=os.getenv("LLM_MODEL"), temperature=0, api_key=os.getenv("LLM_API_KEY"))
 parser = GeoFilterParser(llm, datasource=datasource)
 
 

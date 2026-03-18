@@ -63,7 +63,8 @@ npm install
 npm run build          # produces dist/mcp-app.html
 
 # 4. Start the Python backend (from repo root)
-OPENAI_API_KEY=sk-... uv run uvicorn demo.main:app --reload
+# make sure the .env file is set up with your LLM_API_KEY and LLM_MODEL
+uv run uvicorn demo.main:app --port 8000 --reload
 
 # 5. Start the TypeScript MCP proxy
 cd demo/etter-mcp-app
@@ -117,7 +118,8 @@ The SwissNames3D data directory (`../../data` relative to `docker-compose.yml`) 
 
 | Variable            | Default                 | Description                                     |
 | ------------------- | ----------------------- | ----------------------------------------------- |
-| `OPENAI_API_KEY`    | -                       | Required. Passed to LangChain.                  |
+| `LLM_API_KEY`       | -                       | Required. Passed to LangChain.                  |
+| `LLM_MODEL`         | -                       | The model to use with LangChain.                |
 | `SWISSNAMES3D_PATH` | `data`                  | Path to the SwissNames3D shapefiles.            |
 | `PORT`              | `3002`                  | Port for the Node (TS) server.                  |
 | `PYTHON_API_URL`    | `http://127.0.0.1:8000` | URL of the Python backend, read by `server.ts`. |
