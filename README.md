@@ -1,6 +1,6 @@
 ![etter logo](./images/etter-logo.png)
 
-> **etter** /ˈɛtər/ *n.* (Swiss German) — the boundary or enclosure marking the edge of a village or commune; a natural demarcation between settled and unsettled land.
+> **[etter](https://en.wiktionary.org/wiki/Etter#German)** /ˈɛtɐ/ *n.* (Swiss German) — the boundary or enclosure marking the edge of a village or commune; a natural demarcation between settled and unsettled land.
 
 Natural language geographic query parsing using LLMs.
 
