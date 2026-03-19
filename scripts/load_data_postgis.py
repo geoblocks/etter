@@ -2,9 +2,11 @@
 """
 Load SwissNames3D and IGN BD-CARTO geodata into a PostGIS database.
 
-Instantiates the existing source classes (SwissNames3DSource, IGNBDCartoSource)
-to load and normalise data, then writes the resulting GeoDataFrame to PostGIS
-using the unified schema expected by PostGISDataSource:
+Raw dataset type values are stored as-is so that a PostGISDataSource with the
+appropriate type_map (OBJEKTART_TYPE_MAP / IGN_BDCARTO_TYPE_MAP) can translate
+them at query time.
+
+Schema written to PostGIS:
     id TEXT, name TEXT, type TEXT, geom GEOMETRY(4326)
 
 Usage::
@@ -38,8 +40,8 @@ import geopandas as gpd
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-from etter.datasources.ign_bdcarto import _NAME_COL, _TYPE_COL, IGNBDCartoSource
-from etter.datasources.swissnames3d import SwissNames3DSource, _objektart_to_type
+from etter.datasources.ign_bdcarto import _LAYER_CONFIGS, _NAME_COL, _TYPE_COL, IGNBDCartoSource
+from etter.datasources.swissnames3d import SwissNames3DSource
 
 DB_URL = os.environ.get("ETTER_DB_URL")
 SWISSNAMES3D_PATH = Path(os.environ.get("SWISSNAMES3D_PATH", "data"))
@@ -69,7 +71,7 @@ def _write_to_postgis(
     schema: str,
     if_exists: Literal["fail", "replace", "append"],
 ) -> None:
-    """Write a normalised GeoDataFrame to PostGIS and rename geometry column to 'geom'."""
+    """Write a GeoDataFrame to PostGIS and rename geometry column to 'geom'."""
     gdf.to_postgis(table, engine, schema=schema, if_exists=if_exists, index=False)
     with engine.connect() as conn:
         conn.execute(text(f"ALTER TABLE {schema}.{table} RENAME COLUMN geometry TO geom"))  # noqa: S608
@@ -99,12 +101,12 @@ def load_swissnames3d(engine: Any) -> None:
 
     ids = raw[id_col].astype(str) if id_col else pd.Series([str(i) for i in range(len(raw))])
     names = raw[name_col].astype(str)
-    types = raw[type_col].apply(_objektart_to_type) if type_col else pd.Series(["unknown"] * len(raw))
+    types = raw[type_col].astype(str) if type_col else pd.Series(["unknown"] * len(raw))
 
-    normalized = gpd.GeoDataFrame({"id": ids, "name": names, "type": types}, geometry=raw.geometry, crs="EPSG:4326")
-    normalized = normalized[normalized["name"].str.strip() != ""]
+    out = gpd.GeoDataFrame({"id": ids, "name": names, "type": types}, geometry=raw.geometry, crs="EPSG:4326")
+    out = gpd.GeoDataFrame(out[out["name"].str.strip() != ""], crs="EPSG:4326")
 
-    _write_to_postgis(normalized, engine, SWISSNAMES3D_TABLE, DB_SCHEMA, IF_EXISTS)
+    _write_to_postgis(out, engine, SWISSNAMES3D_TABLE, DB_SCHEMA, IF_EXISTS)
 
 
 def load_ign_bdcarto(engine: Any) -> None:
@@ -122,17 +124,30 @@ def load_ign_bdcarto(engine: Any) -> None:
 
     print(f"  Loaded {len(raw):,} features …")
 
+    def _raw_type(row: pd.Series) -> str:
+        layer = row.get("_layer")
+        cfg = _LAYER_CONFIGS.get(layer, {}) if layer else {}
+        if cfg.get("type_map"):
+            type_col: str = cfg["type_col"]
+            val = row.get(type_col)
+            return str(val) if pd.notna(val) else "unknown"
+
+        val = row.get(_TYPE_COL)
+        return str(val) if pd.notna(val) else "unknown"
+
     id_col = "cleabs" if "cleabs" in raw.columns else None
     ids = raw[id_col].astype(str) if id_col else pd.Series([str(i) for i in range(len(raw))])
 
-    normalized = gpd.GeoDataFrame(
-        {"id": ids, "name": raw[_NAME_COL].astype(str), "type": raw[_TYPE_COL].astype(str)},
+    types = raw.apply(_raw_type, axis=1)
+
+    out = gpd.GeoDataFrame(
+        {"id": ids, "name": raw[_NAME_COL].astype(str), "type": types},
         geometry=raw.geometry,
         crs="EPSG:4326",
     )
-    normalized = normalized[normalized["name"].str.strip() != ""]
+    out = gpd.GeoDataFrame(out[out["name"].str.strip() != ""], crs="EPSG:4326")
 
-    _write_to_postgis(normalized, engine, IGN_BDCARTO_TABLE, DB_SCHEMA, IF_EXISTS)
+    _write_to_postgis(out, engine, IGN_BDCARTO_TABLE, DB_SCHEMA, IF_EXISTS)
 
 
 def main() -> None:
