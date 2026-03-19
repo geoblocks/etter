@@ -7,6 +7,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-geodata}
     volumes:
       - postgis_data:/var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     healthcheck:

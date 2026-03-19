@@ -145,7 +145,7 @@ class PostGISDataSource:
         id_column: str = "id",
         crs: str = "EPSG:4326",
         type_map: dict[str, list[str]] | None = None,
-        fuzzy_threshold: float = 0.3,
+        fuzzy_threshold: float = 0.65,
     ) -> None:
         sa = _require_sqlalchemy()
 
@@ -173,6 +173,7 @@ class PostGISDataSource:
             self._raw_to_normalized = {}
 
         self._trgm_available: bool | None = None
+        self._unaccent_available: bool | None = None
 
     def _get_connection(self) -> Any:
         """Return a SQLAlchemy connection from the engine."""
@@ -190,6 +191,19 @@ class PostGISDataSource:
             logger.exception("Failed to check pg_trgm availability")
             self._trgm_available = False
         return self._trgm_available
+
+    def _check_unaccent(self, conn: Any) -> bool:
+        """Return True if the unaccent extension is available in the database."""
+        if self._unaccent_available is not None:
+            return self._unaccent_available
+        sa = _require_sqlalchemy()
+        try:
+            result = conn.execute(sa.text("SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"))
+            self._unaccent_available = result.fetchone() is not None
+        except Exception:
+            logger.exception("Failed to check unaccent availability")
+            self._unaccent_available = False
+        return self._unaccent_available
 
     def _normalize_type(self, raw_type: str | None) -> str | None:
         """Translate a raw DB type value to its normalized etter name.
@@ -250,8 +264,8 @@ class PostGISDataSource:
         Uses a three-step cascade, stopping as soon as any step returns results:
 
         1. **Normalized exact match**
-        2. **ILIKE substring**
-        3. **pg_trgm fuzzy** (requires the ``pg_trgm`` extension).
+        2. **pg_trgm fuzzy with unaccent** (pg_trgm extension required and unaccent extension recommended)
+        3. **ILIKE substring**
 
         ``merge_segments`` is applied after all rows are fetched so that
         multi-segment linestrings (rivers, roads) are merged before the
@@ -293,11 +307,11 @@ class PostGISDataSource:
 
         if not features:
             with self._get_connection() as conn:
-                features = self._search_ilike(conn, sa, cols, name, type_filter_values, internal_limit)
+                features = self._search_fuzzy(conn, sa, cols, name, type_filter_values, internal_limit)
 
         if not features:
             with self._get_connection() as conn:
-                features = self._search_fuzzy(conn, sa, cols, name, type_filter_values, internal_limit)
+                features = self._search_ilike(conn, sa, cols, name, type_filter_values, internal_limit)
 
         features = merge_segments(features)
         return features[:max_results]
@@ -353,14 +367,27 @@ class PostGISDataSource:
         type_filter: list[str] | None,
         fetch_limit: int,
     ) -> list[dict[str, Any]]:
-        """Case-insensitive substring fallback using ``ILIKE '%name%'``."""
+        """Case-insensitive substring fallback using ``ILIKE '%name%'``.
+
+        When the ``unaccent`` extension is available, both the stored name column
+        and the pattern are accent-stripped so that e.g. ``"Rhone"`` matches
+        ``"Rhône"``.  Without ``unaccent``, standard ILIKE is used (case-insensitive
+        only).
+        """
         type_clause, type_params = self._type_filter_sql(type_filter)
+        normalized = _normalize_name(name)
+        if self._check_unaccent(conn):
+            name_expr = f"unaccent(lower({self._name_col}))"
+            pattern = f"%{normalized}%"
+        else:
+            name_expr = self._name_col
+            pattern = f"%{name}%"
         sql = sa.text(
             f"SELECT {cols} FROM {self._table} "  # noqa: S608
-            f"WHERE {self._name_col} ILIKE :pattern{type_clause} "
+            f"WHERE {name_expr} ILIKE :pattern{type_clause} "
             f"LIMIT :limit"
         )
-        params: dict[str, Any] = {"pattern": f"%{name}%", "limit": fetch_limit, **type_params}
+        params: dict[str, Any] = {"pattern": pattern, "limit": fetch_limit, **type_params}
         try:
             result = conn.execute(sql, params)
             return [self._row_to_feature(row) for row in result]
@@ -379,16 +406,28 @@ class PostGISDataSource:
     ) -> list[dict[str, Any]]:
         """Fuzzy fallback using pg_trgm similarity (if extension is available)."""
         if not self._check_trgm(conn):
+            logger.warning(
+                "pg_trgm extension not available. Fuzzy search disabled. Install it with: CREATE EXTENSION pg_trgm;"
+            )
             return []
+        normalized_query = _normalize_name(name)
+        if self._check_unaccent(conn):
+            name_expr = f"unaccent(lower({self._name_col}))"
+        else:
+            logger.warning(
+                "unaccent extension not available. Accent-insensitive fuzzy search degraded. "
+                "Install it with: CREATE EXTENSION unaccent;"
+            )
+            name_expr = f"lower({self._name_col})"
         type_clause, type_params = self._type_filter_sql(type_filter)
         sql = sa.text(
             f"SELECT {cols} FROM {self._table} "  # noqa: S608
-            f"WHERE similarity({self._name_col}, :name) > :threshold{type_clause} "
-            f"ORDER BY similarity({self._name_col}, :name) DESC "
+            f"WHERE word_similarity({name_expr}, :query) > :threshold{type_clause} "
+            f"ORDER BY word_similarity({name_expr}, :query) DESC "
             f"LIMIT :limit"
         )
         params: dict[str, Any] = {
-            "name": name,
+            "query": normalized_query,
             "threshold": self._fuzzy_threshold,
             "limit": fetch_limit,
             **type_params,

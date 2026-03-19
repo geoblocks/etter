@@ -180,10 +180,17 @@ def _build_ign_type_map() -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
     for cfg in _LAYER_CONFIGS.values():
         raw_map: dict[str, str] | None = cfg.get("type_map")
-        if not raw_map:
-            continue
-        for raw_value, normalized in raw_map.items():
-            result.setdefault(normalized, []).append(raw_value)
+        if raw_map:
+            # Layers with a type_map store raw source values in the DB (e.g. "Estuaire",
+            # "Canal").  Map normalized → list of raw values for query-time translation.
+            for raw_value, normalized in raw_map.items():
+                result.setdefault(normalized, []).append(raw_value)
+        elif fixed := cfg.get("fixed_type"):
+            # Layers with a fixed_type store the normalized value directly in the DB
+            # (e.g. "river" for cours_d_eau).  The DB value IS the normalized type, so
+            # add an identity mapping so the query filter matches it.
+            if fixed not in result.get(fixed, []):
+                result.setdefault(fixed, []).append(fixed)
     return result
 
 
@@ -444,6 +451,7 @@ class IGNBDCartoSource:
 
         if type is not None:
             matching_types = get_matching_types(type)
+            print(f"Filtering results by type hint '{type}' → matching types: {matching_types}")
             if matching_types:
                 features = [f for f in features if f["properties"].get("type") in matching_types]
             else:
