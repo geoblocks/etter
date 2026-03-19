@@ -1,8 +1,16 @@
 """
 PostGIS data source implementation.
 
-Generic datasource backed by any PostGIS-enabled PostgreSQL table using a
-unified normalized schema (id, name, type, geom).
+Generic datasource backed by any PostGIS-enabled PostgreSQL table.  The
+table may store native dataset-specific type values (e.g. SwissNames3D's
+``"See"``, ``"Berg"``) or already-normalized etter type names (e.g.
+``"lake"``, ``"mountain"``).
+
+When native values are stored, pass a ``type_map`` mapping normalized etter
+type names to lists of raw column values, the same format as
+``SwissNames3DSource.OBJEKTART_TYPE_MAP``.  The datasource then translates
+in both directions: raw → normalized for output, normalized → raw for SQL
+type filters.
 
 The datasource is DB-agnostic: the caller provides either a SQLAlchemy
 Engine or a connection URL string.  No specific driver is bundled — the
@@ -54,8 +62,8 @@ class PostGISDataSource:
     """
     Geographic data source backed by a PostGIS table.
 
-    Expects the table to follow the unified normalized schema produced by the
-    ``scripts/load_data_postgis.py`` loader:
+    The table must expose at minimum a name column, a geometry column, and
+    optionally a type column. The expected schema is:
 
     .. code-block:: sql
 
@@ -66,9 +74,16 @@ class PostGISDataSource:
             geom    GEOMETRY(Geometry, 4326)
         );
 
-    Geometries must already be in WGS84 (EPSG:4326).  If your data lives in a
-    different CRS, reproject it before storing or set ``crs`` accordingly and
-    the datasource will reproject on the fly using ``pyproj``.
+    The ``type`` column may store either:
+
+    - **Raw dataset values** (e.g. ``"See"``, ``"Berg"`` for SwissNames3D),
+      pass ``type_map`` so the datasource can translate between raw values and
+      the normalized etter type names.
+    - **Already-normalized values** (e.g. ``"lake"``, ``"mountain"``),
+      leave ``type_map=None`` (default).
+
+    Geometries must be in WGS84 (EPSG:4326) or supply ``crs`` for on-the-fly
+    reprojection.
 
     Args:
         connection: A SQLAlchemy :class:`~sqlalchemy.engine.Engine` **or** a
@@ -81,21 +96,42 @@ class PostGISDataSource:
         geometry_column: PostGIS geometry column (default ``"geom"``).
         id_column: Primary-key column (default ``"id"``).
         crs: CRS of the stored geometries as an EPSG string.  Defaults to
-            ``"EPSG:4326"`` (no reprojection).  If a different CRS is supplied
-            geometries are reprojected to WGS84 before being returned.
-        type_map: Optional mapping of raw ``type`` column values to normalized
-            type strings used by the rest of the etter package.  When ``None``
-            the stored values are used as-is.
-        fuzzy_threshold: Minimum ``pg_trgm`` similarity score (0–1) used for
+            ``"EPSG:4326"`` (no reprojection).
+        type_map: Optional mapping from **normalized etter type names** to
+            **lists of raw type column values** present in the database.
+            This is the same format as ``SwissNames3DSource.OBJEKTART_TYPE_MAP``
+            and ``IGNBDCartoSource.IGN_BDCARTO_TYPE_MAP``, so they can be
+            passed directly::
+
+                from etter.datasources.swissnames3d import OBJEKTART_TYPE_MAP
+                source = PostGISDataSource(
+                    engine,
+                    table="public.swissnames3d",
+                    type_map=OBJEKTART_TYPE_MAP,
+                )
+
+            When ``type_map`` is provided the datasource:
+
+            - Translates raw DB values → normalized types in returned features.
+            - Translates user type hints → raw DB values in SQL ``WHERE`` clauses.
+            - Returns normalized type names from ``get_available_types()``.
+
+            When ``None`` (default) the stored values are used as-is.
+        fuzzy_threshold: Minimum ``pg_trgm`` similarity score (0-1) used for
             fuzzy fallback search when no exact ``ILIKE`` match is found.
 
-    Example::
+    Example: unmodified SwissNames3D table::
 
         from sqlalchemy import create_engine
         from etter.datasources import PostGISDataSource
+        from etter.datasources.swissnames3d import OBJEKTART_TYPE_MAP
 
-        engine = create_engine("postgresql+psycopg2://user:pass@localhost/geodata")
-        source = PostGISDataSource(engine, table="public.swissnames3d")
+        engine = create_engine(...)
+        source = PostGISDataSource(
+            engine,
+            table="public.swissnames3d",
+            type_map=OBJEKTART_TYPE_MAP,
+        )
         results = source.search("Lac Léman", type="lake")
     """
 
@@ -108,7 +144,7 @@ class PostGISDataSource:
         geometry_column: str = "geom",
         id_column: str = "id",
         crs: str = "EPSG:4326",
-        type_map: dict[str, str] | None = None,
+        type_map: dict[str, list[str]] | None = None,
         fuzzy_threshold: float = 0.3,
     ) -> None:
         sa = _require_sqlalchemy()
@@ -124,8 +160,17 @@ class PostGISDataSource:
         self._geom_col = geometry_column
         self._id_col = id_column
         self._crs = crs
-        self._type_map = type_map or {}
         self._fuzzy_threshold = fuzzy_threshold
+
+        # Build bidirectional lookup structures from the user-supplied map.
+        if type_map:
+            self._normalized_to_raw: dict[str, list[str]] = dict(type_map)
+            self._raw_to_normalized: dict[str, str] = {
+                raw: normalized for normalized, raws in type_map.items() for raw in raws
+            }
+        else:
+            self._normalized_to_raw = {}
+            self._raw_to_normalized = {}
 
         self._trgm_available: bool | None = None
 
@@ -147,10 +192,13 @@ class PostGISDataSource:
         return self._trgm_available
 
     def _normalize_type(self, raw_type: str | None) -> str | None:
-        """Apply type_map to a raw DB value, or return it unchanged."""
+        """Translate a raw DB type value to its normalized etter name.
+
+        If no type_map was supplied the value is returned unchanged.
+        """
         if raw_type is None:
             return None
-        return self._type_map.get(raw_type, raw_type)
+        return self._raw_to_normalized.get(raw_type, raw_type)
 
     def _row_to_feature(self, row: Any) -> dict[str, Any]:
         """Convert a SQLAlchemy Row to a GeoJSON Feature dict."""
@@ -220,11 +268,18 @@ class PostGISDataSource:
         sa = _require_sqlalchemy()
         cols = self._build_select_columns()
 
-        # Resolve type filter to concrete types via the hierarchy
+        # Resolve type filter to the raw DB values to use in the SQL WHERE clause.
         type_filter_values: list[str] | None = None
         if type is not None and self._type_col is not None:
             matching_types = get_matching_types(type)
-            type_filter_values = matching_types if matching_types else [type.lower()]
+            concrete_types = matching_types if matching_types else [type.lower()]
+            if self._normalized_to_raw:
+                raw_values: list[str] = []
+                for t in concrete_types:
+                    raw_values.extend(self._normalized_to_raw.get(t, [t]))
+                type_filter_values = raw_values if raw_values else concrete_types
+            else:
+                type_filter_values = concrete_types
 
         # Fetch more rows than requested so that merge_segments has the full
         # set of segments to work with.  Without this, a SQL LIMIT applied

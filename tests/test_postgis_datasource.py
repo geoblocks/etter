@@ -284,15 +284,15 @@ def test_bbox_present_for_polygon(source):
 
 
 def test_type_map_normalisation(db_engine, populated_table):  # noqa: ARG001
-    """type_map parameter remaps raw DB type values."""
+    """type_map translates raw DB type values to normalized etter types in output."""
     source = PostGISDataSource(
         connection=db_engine,
         table=TABLE_NAME,
-        type_map={"city": "settlement", "peak": "mountain_peak"},
+        type_map={"settlement": ["city"]},
     )
     results = source.search("Geneva")
     assert results
-    # After mapping, "city" should become "settlement"
+    # After mapping, raw "city" should appear as "settlement" in output.
     assert results[0]["properties"]["type"] == "settlement"
 
 
@@ -307,3 +307,99 @@ def test_no_type_column(db_engine, populated_table):  # noqa: ARG001
     assert len(results) >= 1
     types = source.get_available_types()
     assert types == []
+
+
+RAW_TABLE_NAME = "public.test_raw_types"
+
+_RAW_TYPE_MAP: dict[str, list[str]] = {
+    "lake": ["See", "Seeteil", "Stausee"],
+    "mountain": ["Berg"],
+    "peak": ["Gipfel"],
+    "river": ["Fliessgewaesser"],
+    "city": ["Ort"],
+}
+
+
+@pytest.fixture(scope="module")
+def raw_table(db_engine):
+    """Load a table with raw OBJEKTART-style type values."""
+    features = [
+        {"id": "r-001", "name": "Zürichsee", "type": "See", "geometry": Point(8.57, 47.28)},
+        {"id": "r-002", "name": "Zürich", "type": "Ort", "geometry": Point(8.54, 47.37)},
+        {"id": "r-003", "name": "Säntis", "type": "Gipfel", "geometry": Point(9.34, 47.25)},
+        {"id": "r-004", "name": "Greifensee", "type": "See", "geometry": Point(8.68, 47.37)},
+        {"id": "r-005", "name": "Limmat", "type": "Fliessgewaesser", "geometry": Point(8.54, 47.38)},
+    ]
+
+    gdf = gpd.GeoDataFrame(
+        pd.DataFrame([{k: v for k, v in f.items() if k != "geometry"} for f in features]),
+        geometry=[f["geometry"] for f in features],
+        crs="EPSG:4326",
+    )
+    gdf.to_postgis("test_raw_types", db_engine, schema="public", if_exists="replace", index=False)
+    with db_engine.connect() as conn:
+        conn.execute(text("ALTER TABLE public.test_raw_types RENAME COLUMN geometry TO geom"))
+        conn.commit()
+    yield RAW_TABLE_NAME
+
+
+@pytest.fixture(scope="module")
+def raw_source(db_engine, raw_table):  # noqa: ARG001
+    """PostGISDataSource backed by the raw-value table with a type_map."""
+    return PostGISDataSource(
+        connection=db_engine,
+        table=RAW_TABLE_NAME,
+        type_map=_RAW_TYPE_MAP,
+    )
+
+
+def test_raw_type_map_output_normalized(raw_source):
+    """Raw DB type values are translated to normalized types in returned features."""
+    results = raw_source.search("Zürichsee")
+    assert results
+    assert results[0]["properties"]["type"] == "lake"
+
+
+def test_raw_type_map_type_filter(raw_source):
+    """Searching with a normalized type hint filters against raw DB values."""
+    results = raw_source.search("see", type="lake")
+    types_in_output = {r["properties"]["type"] for r in results}
+    assert types_in_output == {"lake"}
+    # Raw values must NOT appear in output
+    raw_values = {"See", "Seeteil", "Stausee"}
+    for r in results:
+        assert r["properties"]["type"] not in raw_values
+
+
+def test_raw_type_map_category_filter(raw_source):
+    """Category type hint (e.g. 'water') expands and maps to raw DB values."""
+    # "water" category includes "lake" and "river", which map to "See"/"Seeteil"/
+    # "Stausee" and "Fliessgewaesser" in the raw table.
+    results = raw_source.search("e", type="water")
+    output_types = {r["properties"]["type"] for r in results}
+    assert output_types.issubset({"lake", "river", "pond", "spring", "waterfall", "glacier"})
+
+
+def test_raw_type_map_get_available_types(raw_source):
+    """get_available_types returns normalized type names, not raw DB values."""
+    types = raw_source.get_available_types()
+    # Should return normalized names
+    assert "lake" in types
+    assert "city" in types
+    # Raw values must not appear
+    assert "See" not in types
+    assert "Ort" not in types
+    assert "Gipfel" not in types
+
+
+def test_raw_type_map_unmapped_value(db_engine, raw_table):  # noqa: ARG001
+    """Values not present in type_map are returned as-is (passthrough)."""
+    source = PostGISDataSource(
+        connection=db_engine,
+        table=RAW_TABLE_NAME,
+        type_map={"lake": ["See"]},  # only "See" is mapped; others fall through
+    )
+    results = source.search("Säntis")
+    assert results
+    # "Gipfel" is not in the map, returned unchanged
+    assert results[0]["properties"]["type"] == "Gipfel"

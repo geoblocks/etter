@@ -175,6 +175,21 @@ _TYPE_COL = "_normalized_type"
 _NAME_COL = "_name"
 
 
+# Public type map
+def _build_ign_type_map() -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for cfg in _LAYER_CONFIGS.values():
+        raw_map: dict[str, str] | None = cfg.get("type_map")
+        if not raw_map:
+            continue
+        for raw_value, normalized in raw_map.items():
+            result.setdefault(normalized, []).append(raw_value)
+    return result
+
+
+IGN_BDCARTO_TYPE_MAP: dict[str, list[str]] = _build_ign_type_map()
+
+
 def _normalize_name(name: str) -> str:
     """Lowercase, strip diacritics for accent-insensitive matching."""
     nfkd = unicodedata.normalize("NFKD", name)
@@ -330,6 +345,7 @@ class IGNBDCartoSource:
 
             gdf[_NAME_COL] = gdf[name_col].astype(str)
             gdf[_TYPE_COL] = gdf.apply(lambda row, c=cfg: _derive_type(row, c), axis=1)
+            gdf["_layer"] = layer_name
             gdf = gdf.to_crs("EPSG:4326")
 
             gdfs.append(gdf)

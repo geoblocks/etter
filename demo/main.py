@@ -16,6 +16,8 @@ from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel
 
 from etter.datasources import CompositeDataSource, IGNBDCartoSource, PostGISDataSource, SwissNames3DSource
+from etter.datasources.ign_bdcarto import IGN_BDCARTO_TYPE_MAP
+from etter.datasources.swissnames3d import OBJEKTART_TYPE_MAP
 from etter.parser import GeoFilterParser
 from etter.spatial import apply_spatial_relation
 
@@ -63,6 +65,7 @@ if ETTER_DB_URL:
         PostGISDataSource(
             connection=ETTER_DB_URL,
             table=swissnames_table,
+            type_map=OBJEKTART_TYPE_MAP,
         )
     )
 
@@ -71,6 +74,7 @@ if ETTER_DB_URL:
         PostGISDataSource(
             connection=ETTER_DB_URL,
             table=bdcarto_table,
+            type_map=IGN_BDCARTO_TYPE_MAP,
         )
     )
 else:
