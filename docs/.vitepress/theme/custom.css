@@ -1,0 +1,27 @@
+/* etter brand: #03b000 accent, JetBrains Mono */
+
+:root {
+  --vp-font-family-base: 'JetBrains Mono', monospace;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
+
+  /* Brand green */
+  --vp-c-brand-1: #03b000;
+  --vp-c-brand-2: #029000;
+  --vp-c-brand-3: #027a00;
+  --vp-c-brand-soft: rgba(3, 176, 0, 0.14);
+
+  /* Home hero button */
+  --vp-button-brand-bg: #03b000;
+  --vp-button-brand-hover-bg: #029000;
+  --vp-button-brand-active-bg: #027a00;
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-text: #ffffff;
+}
+
+/* Ensure code blocks also use JetBrains Mono */
+.vp-doc code,
+.vp-doc pre {
+  font-family: 'JetBrains Mono', monospace;
+}
