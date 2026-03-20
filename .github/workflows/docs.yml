@@ -32,7 +32,7 @@ jobs:
         run: uv sync --extra dev
 
       - name: Generate API docs with pdoc
-        run: uv run pdoc etter etter.datasources --docformat google -o docs/public/api/
+        run: uv run pdoc etter etter.datasources --docformat google -t docs/pdoc-templates -o docs/public/api/
 
       - name: Set up Node
         uses: actions/setup-node@v4
