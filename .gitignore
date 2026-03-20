@@ -12,3 +12,11 @@ data/
 
 node_modules/
 dist/
+
+# VitePress
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+docs/node_modules/
+
+# pdoc generated API docs (built in CI)
+docs/public/api/
