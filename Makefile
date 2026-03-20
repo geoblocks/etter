@@ -54,7 +54,7 @@ $(DATA_PKT_IGN):
 	rm $(BDCARTO_ARCHIVE)
 
 docs-preview:
-	uv run pdoc etter etter.datasources --docformat google -t docs/pdoc-templates -o docs/public/api/
+	uv run pdoc etter --docformat google -t docs/pdoc-templates -o docs/public/api/
 	npm --prefix docs run build
 	npm --prefix docs run preview
 
