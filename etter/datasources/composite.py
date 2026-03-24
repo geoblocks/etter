@@ -14,9 +14,7 @@ class CompositeDataSource:
     """
     Fan-out datasource that delegates to an ordered list of GeoDataSource instances.
 
-    ``search`` queries every registered source and merges results in order,
-    de-duplicating by ``(name, type)`` so that the same place appearing in
-    multiple sources is only returned once (first-wins).
+    ``search`` queries every registered source and merges results in order.
 
     ``get_by_id`` tries each source in order and returns the first hit.
 
