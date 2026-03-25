@@ -7,7 +7,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL}
       - SWISSNAMES3D_PATH=/data
     volumes:
       - ../../data:/data:ro
