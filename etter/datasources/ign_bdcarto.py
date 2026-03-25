@@ -27,17 +27,15 @@ Expected data layout (produced by scripts/extract_bdcarto.sh):
 """
 
 import unicodedata
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
 import pandas as pd
 from rapidfuzz import fuzz
-from shapely.geometry import mapping, shape
-from shapely.ops import unary_union
+from shapely.geometry import mapping
 
-from .location_types import get_matching_types
+from .location_types import get_matching_types, merge_segments
 
 _PLAN_D_EAU_TYPES: dict[str, str] = {
     "Lac": "lake",
@@ -177,6 +175,28 @@ _TYPE_COL = "_normalized_type"
 _NAME_COL = "_name"
 
 
+# Public type map
+def _build_ign_type_map() -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for cfg in _LAYER_CONFIGS.values():
+        raw_map: dict[str, str] | None = cfg.get("type_map")
+        if raw_map:
+            # Layers with a type_map store raw source values in the DB (e.g. "Estuaire",
+            # "Canal").  Map normalized → list of raw values for query-time translation.
+            for raw_value, normalized in raw_map.items():
+                result.setdefault(normalized, []).append(raw_value)
+        elif fixed := cfg.get("fixed_type"):
+            # Layers with a fixed_type store the normalized value directly in the DB
+            # (e.g. "river" for cours_d_eau).  The DB value IS the normalized type, so
+            # add an identity mapping so the query filter matches it.
+            if fixed not in result.get(fixed, []):
+                result.setdefault(fixed, []).append(fixed)
+    return result
+
+
+IGN_BDCARTO_TYPE_MAP: dict[str, list[str]] = _build_ign_type_map()
+
+
 def _normalize_name(name: str) -> str:
     """Lowercase, strip diacritics for accent-insensitive matching."""
     nfkd = unicodedata.normalize("NFKD", name)
@@ -246,67 +266,6 @@ def _derive_type(row: pd.Series, cfg: dict[str, Any]) -> str:
         raw = str(row.get(type_col, "")) if pd.notna(row.get(type_col)) else ""
         return type_map.get(raw, "unknown")
     return "unknown"
-
-
-_MERGE_TYPES: frozenset[str] = frozenset(
-    [
-        # Hydrography
-        "river",
-        "lake",
-        "pond",
-        "glacier",
-        # Landforms
-        "mountain",
-        "peak",
-        "ridge",
-        "valley",
-        "plain",
-        "massif",
-        "pass",
-        # Protected areas / forests
-        "park",
-        "nature_reserve",
-        "forest",
-        # Transport linear features
-        "road",
-        "railway",
-        "bridge",
-        "tunnel",
-    ]
-)
-
-
-def _merge_segments(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """
-    Merge features that share the same (name, type) by unioning their geometries,
-    but only for types listed in ``_MERGE_TYPES``.
-
-    Rivers, ridges and other continuous geographic features in BD-CARTO are
-    often split into many individual segments.  When the caller queries for
-    "l'Oise" they expect the full course of the river, not an arbitrary single
-    segment.  Settlement and administrative types (city, municipality, …) are
-    excluded because two French villages with the same name are distinct places
-    that must not be conflated.
-    """
-    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-    for f in features:
-        props = f.get("properties", {})
-        key = (str(props.get("name", "")), str(props.get("type", "")))
-        groups[key].append(f)
-
-    merged: list[dict[str, Any]] = []
-    for (name, ftype), group_features in groups.items():
-        if len(group_features) == 1 or ftype not in _MERGE_TYPES:
-            merged.extend(group_features)
-        else:
-            geoms = [shape(f["geometry"]) for f in group_features if f.get("geometry") and f["geometry"].get("type")]
-            combined = unary_union(geoms)
-            base = dict(group_features[0].items())
-            base["geometry"] = mapping(combined)
-            bounds = combined.bounds
-            base["bbox"] = tuple(bounds) if bounds else None
-            merged.append(base)
-    return merged
 
 
 class IGNBDCartoSource:
@@ -393,6 +352,7 @@ class IGNBDCartoSource:
 
             gdf[_NAME_COL] = gdf[name_col].astype(str)
             gdf[_TYPE_COL] = gdf.apply(lambda row, c=cfg: _derive_type(row, c), axis=1)
+            gdf["_layer"] = layer_name
             gdf = gdf.to_crs("EPSG:4326")
 
             gdfs.append(gdf)
@@ -491,12 +451,13 @@ class IGNBDCartoSource:
 
         if type is not None:
             matching_types = get_matching_types(type)
+            print(f"Filtering results by type hint '{type}' → matching types: {matching_types}")
             if matching_types:
                 features = [f for f in features if f["properties"].get("type") in matching_types]
             else:
                 features = [f for f in features if f["properties"].get("type") == type.lower()]
 
-        features = _merge_segments(features)
+        features = merge_segments(features)
 
         return features[:max_results]
 
