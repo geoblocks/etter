@@ -22,35 +22,55 @@
 
 etter fits into a search pipeline:
 
-```
-User Query: "Hiking with children north of Lausanne"
-     ↓
-Parent System → Extracts: Activity="Hiking", Audience="children"
-     ↓
-etter.parser → Parses: relation="north_of", location="Lausanne"
-     ↓
-etter.datasource → Resolves: "Lausanne" → Point(6.63, 46.52)
-     ↓
-etter.spatial → Transforms: Point → Polygon(North Sector)
-     ↓
-Parent System → Database Query: WHERE activity='hiking' AND ST_Intersects(location, sector_polygon)
+```mermaid
+flowchart LR
+
+  NL[/"text query"/]
+  LLMAGENT(["LLM model"])
+  OUT[/"geometry"/]
+
+  subgraph L1["etter.parser"]
+    direction TB
+    PARSER["GeoFilterParser"]
+    GQ[["GeoQuery"]]
+    PARSER --> GQ
+  end
+
+  subgraph L2["etter.datasource"]
+    direction TB
+    DS["GeoDataSource"]
+    GDS[("geo data")]
+    GEOM[["geometry"]]
+    DS --> GDS --> GEOM
+  end
+
+  subgraph L3["etter.spatial"]
+    SPATIAL["apply_spatial_relation()"]
+  end
+
+  NL --> PARSER
+  PARSER <-->|"prompt / response"| LLMAGENT
+  GQ -->|"location + type"| DS
+  GQ -->|"spatial relation + config"| SPATIAL
+  GEOM --> SPATIAL
+  SPATIAL --> OUT
 ```
 
 ---
 
 ## Complete Example Workflow
 
-Here's what happens when you query "north of Lausanne" in the demo:
+Here's what happens when you do a query in the demo:
 
 ```
-1. INPUT: "north of Lausanne"
+1. INPUT: "Hiking with children north of Lausanne"
    ↓
 2. PARSER (Layer 1)
    - Extracts: spatial_relation="north_of", reference_location="Lausanne"
    - Confidence: 0.95
    - Buffer: 10000m (default for directional)
    ↓
-3. DATASOURCE (Layer 2) 
+3. DATASOURCE (Layer 2)
    - Searches: name="Lausanne", type="settlement" (inferred)
    - Finds: Point(6.63, 46.52) in WGS84
    - Confidence: 1.0 (exact match)
@@ -71,8 +91,6 @@ Here's what happens when you query "north of Lausanne" in the demo:
 ```
 
 ---
-
-
 
 ### 1. GeoFilterParser (Layer 1)
 
@@ -279,7 +297,7 @@ class MyDataSource:
     def get_available_types(self) -> list[str]:
         """Return concrete types this datasource can return."""
         return ["lake", "river", "city", "restaurant", "hospital"]
-    
+
     def search(self, name: str, type: str | None = None, max_results: int = 10):
         # Map native types to standard hierarchy
         # Use location_types.get_matching_types(type) for fuzzy matching
