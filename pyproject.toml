@@ -31,7 +31,7 @@ dev = [
     "pdoc>=14.0",
     "fastapi>=0.135",
     "python-dotenv>=1.2",
-    "uvicorn>=0.41",
+    "uvicorn>=0.44.0",
     "mcp[cli]>=1.26",
     "rich>=13.0",
     # PostGIS integration tests
