@@ -93,6 +93,10 @@ expressApp.post("/mcp", async (req, res) => {
   await transport.handleRequest(req, res, req.body);
 });
 
+expressApp.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 expressApp.listen(PORT, (err) => {
   if (err) {
     console.error("Error starting server:", err);
