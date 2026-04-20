@@ -13,7 +13,7 @@ import typing
 import pytest
 
 from etter.datasources import LocationTypeName, TypeMap
-from etter.datasources.ign_bdcarto import IGN_BDCARTO_TYPE_MAP
+from etter.datasources.ign_bdcarto import IGN_BDCARTO_TYPE_MAP, _build_type_map
 from etter.datasources.location_types import ALL_CATEGORIES, ALL_TYPES
 from etter.datasources.swissnames3d import OBJEKTART_TYPE_MAP
 
@@ -96,3 +96,35 @@ class TestIgnBdcartoTypeMapKeys:
         """
         for key, values in IGN_BDCARTO_TYPE_MAP.items():
             assert len(values) == len(set(values)), f"IGN_BDCARTO_TYPE_MAP[{key!r}] contains duplicate values: {values}"
+
+    def test_commune_flags_types_present(self) -> None:
+        """Regression: commune_flags layers must contribute 'city' and 'municipality' to the map.
+
+        The 'commune' layer uses commune_flags instead of fixed_type or type_map.
+        _build_type_map() must handle this branch explicitly; without it 'city' is
+        silently absent from IGN_BDCARTO_TYPE_MAP even though the datasource produces
+        city features at runtime.
+        """
+        assert "city" in IGN_BDCARTO_TYPE_MAP, (
+            "'city' is missing from IGN_BDCARTO_TYPE_MAP commune_flags branch "
+            "in _build_type_map() may have been removed or broken"
+        )
+        assert "municipality" in IGN_BDCARTO_TYPE_MAP, "'municipality' is missing from IGN_BDCARTO_TYPE_MAP"
+
+    def test_build_type_map_output_matches_typemap_structure(self) -> None:
+        """_build_type_map() output must conform to TypeMap at runtime."""
+        result = _build_type_map()
+        valid_keys = frozenset(typing.get_args(LocationTypeName))
+
+        assert isinstance(result, dict), "_build_type_map() must return a dict"
+        for key, values in result.items():
+            assert key in valid_keys, (
+                f"_build_type_map() produced key {key!r} which is not a valid "
+                f"LocationTypeName the cast(TypeMap, ...) would silently lie"
+            )
+            assert isinstance(values, list) and len(values) > 0, (
+                f"_build_type_map() produced a non-list or empty list for key {key!r}: {values!r}"
+            )
+            assert all(isinstance(v, str) for v in values), (
+                f"_build_type_map() produced non-string values for key {key!r}: {values!r}"
+            )
