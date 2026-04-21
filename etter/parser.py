@@ -106,6 +106,35 @@ class GeoFilterParser:
             available_types=available_types,
         )
 
+    def _unpack_response(self, response) -> GeoQuery:
+        """Extract and validate the GeoQuery from a structured-LLM response."""
+        parsed = response.get("parsed") if isinstance(response, dict) else response
+
+        if parsed is None:
+            raw = response.get("raw", "") if isinstance(response, dict) else ""
+            error = response.get("parsing_error") if isinstance(response, dict) else None
+            raise ParsingError(
+                message="Failed to parse query into structured format. "
+                "LLM may have returned invalid JSON or missed required fields.",
+                raw_response=str(raw),
+                original_error=error,
+            )
+
+        assert isinstance(parsed, GeoQuery), "Parsed result must be GeoQuery"
+        return parsed
+
+    def _finalize(self, geo_query: GeoQuery, query: str) -> GeoQuery:
+        """Set original_query and run the validation pipeline."""
+        if not geo_query.original_query or geo_query.original_query != query:
+            geo_query.original_query = query
+
+        return validate_query(
+            geo_query,
+            self.spatial_config,
+            confidence_threshold=self.confidence_threshold,
+            strict_mode=self.strict_mode,
+        )
+
     def parse(self, query: str) -> GeoQuery:
         """
         Parse a natural language location query into structured format.
@@ -160,10 +189,8 @@ class GeoFilterParser:
             >>> result.reference_location.name
             'Genève'
         """
-        # Format prompt with query
         formatted_messages = self.prompt.format_messages(query=query)
 
-        # Invoke LLM with structured output
         try:
             response = self.structured_llm.invoke(formatted_messages)
         except Exception as e:
@@ -173,35 +200,28 @@ class GeoFilterParser:
                 original_error=e,
             ) from e
 
-        # Check for parsing errors
-        parsed = response.get("parsed") if isinstance(response, dict) else response
+        return self._finalize(self._unpack_response(response), query)
 
-        if parsed is None:
-            raw = response.get("raw", "") if isinstance(response, dict) else ""
-            error = response.get("parsing_error") if isinstance(response, dict) else None
+    async def aparse(self, query: str) -> GeoQuery:
+        """
+        Asynchronously parse a natural language location query into structured format.
+
+        Async counterpart to :meth:`parse`. Uses ``ainvoke`` on the structured LLM
+        so it can be awaited inside event loops (e.g. FastAPI endpoints) without
+        blocking. Validation is synchronous and runs after the LLM call.
+        """
+        formatted_messages = self.prompt.format_messages(query=query)
+
+        try:
+            response = await self.structured_llm.ainvoke(formatted_messages)
+        except Exception as e:
             raise ParsingError(
-                message="Failed to parse query into structured format. "
-                "LLM may have returned invalid JSON or missed required fields.",
-                raw_response=str(raw),
-                original_error=error,
-            )
+                message=f"LLM invocation failed: {str(e)}",
+                raw_response="",
+                original_error=e,
+            ) from e
 
-        geo_query = parsed
-        assert isinstance(geo_query, GeoQuery), "Parsed result must be GeoQuery"
-
-        # Ensure original_query is set correctly
-        if not geo_query.original_query or geo_query.original_query != query:
-            geo_query.original_query = query
-
-        # Run validation pipeline
-        geo_query = validate_query(
-            geo_query,
-            self.spatial_config,
-            confidence_threshold=self.confidence_threshold,
-            strict_mode=self.strict_mode,
-        )
-
-        return geo_query
+        return self._finalize(self._unpack_response(response), query)
 
     async def parse_stream(self, query: str) -> AsyncGenerator[dict]:
         """
@@ -270,25 +290,11 @@ class GeoFilterParser:
                 ) from e
 
             yield {"type": "reasoning", "content": "Parsing LLM response into structured format"}
-            parsed = response.get("parsed") if isinstance(response, dict) else response
-
-            if parsed is None:
-                raw = response.get("raw", "") if isinstance(response, dict) else ""
-                error = response.get("parsing_error") if isinstance(response, dict) else None
+            try:
+                geo_query = self._unpack_response(response)
+            except ParsingError:
                 yield {"type": "error", "content": "Failed to parse response - invalid JSON or missing fields"}
-                raise ParsingError(
-                    message="Failed to parse query into structured format. "
-                    "LLM may have returned invalid JSON or missed required fields.",
-                    raw_response=str(raw),
-                    original_error=error,
-                )
-
-            geo_query = parsed
-            assert isinstance(geo_query, GeoQuery), "Parsed result must be GeoQuery"
-
-            # Ensure original_query is set correctly
-            if not geo_query.original_query or geo_query.original_query != query:
-                geo_query.original_query = query
+                raise
 
             if geo_query.confidence_breakdown.reasoning:
                 yield {
@@ -297,12 +303,7 @@ class GeoFilterParser:
                 }
 
             yield {"type": "reasoning", "content": "Validating spatial relation configuration"}
-            geo_query = validate_query(
-                geo_query,
-                self.spatial_config,
-                confidence_threshold=self.confidence_threshold,
-                strict_mode=self.strict_mode,
-            )
+            geo_query = self._finalize(geo_query, query)
 
             yield {"type": "reasoning", "content": "Query parsing completed successfully"}
             yield {"type": "data-response", "content": geo_query.model_dump()}

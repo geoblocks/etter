@@ -128,13 +128,13 @@ def _build_result_features(geo_query, reference_features: list) -> list:
     return result_features
 
 
-def _run_geo_query(query: str) -> "QueryResponse":
+async def _run_geo_query(query: str) -> "QueryResponse":
     """Parse a natural-language query and resolve it to a QueryResponse.
 
     Raises:
         ValueError: if the reference location is not found in the datasource.
     """
-    geo_query = parser.parse(query)
+    geo_query = await parser.aparse(query)
     location_name = geo_query.reference_location.name
     features = datasource.search(location_name, type=geo_query.reference_location.type)
     if not features:
@@ -157,7 +157,7 @@ class QueryResponse(BaseModel):
 @app.post("/api/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
     try:
-        return _run_geo_query(request.query)
+        return await _run_geo_query(request.query)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -260,7 +260,7 @@ async def parse_geo_query(user_query: str) -> dict[str, Any]:
             e.g. "Find all locations within walking distance from Zurich main railway station"
     """
     try:
-        return _run_geo_query(user_query).model_dump()
+        return (await _run_geo_query(user_query)).model_dump()
     except ValueError as e:
         raise ToolError(str(e))
 
