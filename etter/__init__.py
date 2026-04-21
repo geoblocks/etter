@@ -1,5 +1,5 @@
 """
-etter - Natural Language Geographic Query Parsing
+etter - Natural language geographic query parsing using LLMs.
 
 Parse location queries into structured geographic queries using LLM.
 """
