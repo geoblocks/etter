@@ -76,6 +76,16 @@ parser = GeoFilterParser(llm=llm, confidence_threshold=0.8, strict_mode=True)
 
 See [`GeoQuery`](../api/etter.html#GeoQuery) for a full description of all output fields.
 
+## Async parsing
+
+Inside an event loop (e.g. a FastAPI handler), use the async counterpart `aparse` so the LLM call does not block other requests:
+
+```python
+geo_query = await parser.aparse("north of Lausanne")
+```
+
+`aparse` returns the same `GeoQuery` as `parse`; it differs only in that it awaits `ainvoke` on the underlying LLM. See [`aparse`](../api/etter.html#GeoFilterParser.aparse).
+
 ## Streaming
 
 For responsive UIs, use `parse_stream` to receive reasoning events in real time:
