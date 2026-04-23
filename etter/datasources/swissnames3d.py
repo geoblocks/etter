@@ -24,13 +24,13 @@ from .location_types import TypeMap, get_matching_types
 _TRANSFORMER = pyproj.Transformer.from_crs("EPSG:2056", "EPSG:4326", always_xy=True)
 
 # Map normalized, grouped types to their OBJEKTART values.
-# Each type groups related OBJEKTART values (e.g., lake groups: See, Seeteil, Stausee).
+# Each type groups related OBJEKTART values (e.g., lake groups: See, Seeteil).
 # This reduces cardinality while preserving semantic meaning and traceability.
+# Based on swissNAMES3D 2025 (https://www.swisstopo.admin.ch/en/landscape-model-swissnames3d).
 OBJEKTART_TYPE_MAP: TypeMap = {
     # Water bodies
-    "lake": ["See", "Seeteil", "Stausee"],
-    "island": ["Seeinsel", "Insel"],
-    "pond": ["Weiher"],
+    "lake": ["See", "Seeteil"],
+    "island": ["Seeinsel"],
     "river": ["Fliessgewaesser"],
     "ditch": ["Graben"],
     "spring": ["Quelle"],
@@ -39,24 +39,20 @@ OBJEKTART_TYPE_MAP: TypeMap = {
     "weir": ["Wehr"],
     "dam": ["Staumauer", "Staudamm"],
     # Landforms
-    "mountain": ["Berg"],
     "peak": ["Gipfel", "Hauptgipfel", "Alpiner Gipfel"],
     "hill": ["Huegel", "Haupthuegel", "Huegelzug"],
     "pass": ["Pass", "Strassenpass"],
     "valley": ["Tal", "Haupttal"],
-    "plain": ["Ebene"],
     "rock_head": ["Felskopf"],
     "boulder": ["Felsblock", "Erratischer Block"],
     "ridge": ["Grat"],
     "massif": ["Massiv"],
-    "peninsula": ["Halbinsel"],
-    "cave": ["Grotte, Hoehle"],
+    "cave": ["Grotte, Hoehle"],  # single OBJEKTART value with comma, not two separate values
     # Populated places
     "city": ["Ort"],
-    "district": ["Ortsteil", "Quartier", "Quartierteil", "Bezirk"],
-    "hamlet": ["Weiler"],
+    "district": ["Ortsteil", "Quartier", "Quartierteil"],
     # Buildings
-    "building": ["Einzelhaus", "Gebaeude", "Offenes Gebaeude"],
+    "building": ["Gebaeude", "Offenes Gebaeude"],
     "religious_building": ["Sakrales Gebaeude", "Kapelle"],
     "tower": ["Turm"],
     "monument": ["Denkmal", "Bildstock"],
@@ -66,13 +62,11 @@ OBJEKTART_TYPE_MAP: TypeMap = {
     "area": ["Gebiet"],
     "border_marker": ["Landesgrenzstein"],
     # Transport - Stops & Stations
-    "train_station": ["Haltestelle Bahn", "Haltestelle_Bahn"],
-    "bus_stop": ["Haltestelle Bus", "Haltestelle_Bus"],
+    "train_station": ["Haltestelle Bahn"],
+    "bus_stop": ["Haltestelle Bus"],
     "boat_stop": ["Haltestelle Schiff"],
     # Transport - Roads
     "road": ["Strasse"],
-    "bridge": ["Bruecke"],
-    "tunnel": ["Tunnel"],
     "exit": ["Ausfahrt"],
     "entrance_exit": ["Ein- und Ausfahrt"],
     "junction": ["Verzweigung"],
@@ -83,7 +77,7 @@ OBJEKTART_TYPE_MAP: TypeMap = {
     "lift": ["Luftseilbahn", "Gondelbahn", "Sesselbahn", "Skilift", "Transportseil"],
     "loading_station": ["Verladestation"],
     # Transport - Airports
-    "airport": ["Flugplatz", "Flugplatzareal", "Flugfeldareal", "Flughafenareal"],
+    "airport": ["Flugplatzareal", "Flugfeldareal", "Flughafenareal"],
     "heliport": ["Heliport"],
     # Transport - Ferries
     "ferry": ["Personenfaehre mit Seil", "Personenfaehre ohne Seil", "Autofaehre"],
@@ -124,9 +118,6 @@ OBJEKTART_TYPE_MAP: TypeMap = {
     "military_training_area": ["Truppenuebungsplatz"],
     "customs": ["Zollamt 24h 24h", "Zollamt 24h eingeschraenkt", "Zollamt eingeschraenkt"],
     # Nature
-    "forest": ["Wald"],
-    "nature_reserve": ["Naturschutzgebiet"],
-    "alpine_pasture": ["Alp"],
     "field_name": ["Flurname swisstopo"],
     "local_name": ["Lokalname swisstopo"],
     # Points of Interest
