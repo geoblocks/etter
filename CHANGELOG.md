@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/geoblocks/etter/compare/v0.2.0...v0.2.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* align OBJEKTART_TYPE_MAP with swissNAMES3D 2025 catalogue ([#96](https://github.com/geoblocks/etter/issues/96)) ([e0a3fb4](https://github.com/geoblocks/etter/commit/e0a3fb4c421ec5163cea0148ce5bbabfa0831b93))
+* reduce prompt token count by ~34% ([#94](https://github.com/geoblocks/etter/issues/94)) ([4e1876e](https://github.com/geoblocks/etter/commit/4e1876ef910502338dca5fcd42de8cf0ea942353))
+
 ## [0.2.0](https://github.com/geoblocks/etter/compare/v0.1.3...v0.2.0) (2026-04-22)
 
 
