@@ -4,8 +4,21 @@ version         = "0.2.1"
 description     = "Natural language geographic query parsing using LLMs"
 readme          = "README.md"
 license         = "BSD-3-Clause"
+license-files   = ["LICENSE"]
 authors         = [{ name = "etter contributors" }]
 requires-python = ">=3.10"
+keywords        = ["gis", "nlp", "llm", "spatial", "natural-language", "location-parsing", "structured-output"]
+classifiers     = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: GIS",
+]
 dependencies = [
     "langchain>=1.2",
     "pydantic>=2.12",
@@ -20,7 +33,7 @@ Homepage      = "https://geoblocks.github.io/etter/"
 Repository    = "https://github.com/geoblocks/etter"
 Documentation = "https://geoblocks.github.io/etter/"
 Changelog     = "https://github.com/geoblocks/etter/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/geoblocks/etter/issues"
+"Issue Tracker" = "https://github.com/geoblocks/etter/issues"
 
 [project.optional-dependencies]
 postgis = [
@@ -46,7 +59,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.ruff]
