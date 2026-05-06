@@ -125,7 +125,11 @@ class GeoQuery(BaseModel):
         "Future: 'compound' = multi-step, 'split' = area division, 'boolean' = AND/OR/NOT operations",
     )
     spatial_relation: SpatialRelation = Field(description="Spatial relationship to reference location")
-    reference_location: ReferenceLocation = Field(description="Reference location for the spatial query")
+    reference_location: ReferenceLocation | None = Field(
+        None,
+        description="Reference location for the spatial query. "
+        "None when the query contains no named geographic location.",
+    )
     buffer_config: BufferConfig | None = Field(
         None,
         description="Buffer configuration for buffer and directional relations. "

@@ -6,7 +6,7 @@ import warnings
 
 import pytest
 
-from etter.exceptions import LowConfidenceError, LowConfidenceWarning, UnknownRelationError
+from etter.exceptions import LowConfidenceError, LowConfidenceWarning, NoReferenceLocationError, UnknownRelationError
 from etter.models import (
     BufferConfig,
     ConfidenceScore,
@@ -19,6 +19,7 @@ from etter.validators import (
     check_confidence_threshold,
     enrich_with_defaults,
     validate_query,
+    validate_reference_location_present,
     validate_spatial_relation,
 )
 
@@ -50,6 +51,50 @@ def sample_query():
         ),
         original_query="in Bern",
     )
+
+
+def test_validate_reference_location_present(sample_query):
+    """Test validation passes when reference_location is set."""
+    validate_reference_location_present(sample_query)
+
+
+def test_validate_reference_location_absent():
+    """Test validation raises NoReferenceLocationError when reference_location is None."""
+    query = GeoQuery(
+        query_type="simple",
+        spatial_relation=SpatialRelation(relation="in", category="containment"),
+        reference_location=None,
+        buffer_config=None,
+        confidence_breakdown=ConfidenceScore(
+            overall=0.95,
+            location_confidence=0.0,
+            relation_confidence=0.95,
+            reasoning="No named location",
+        ),
+        original_query="vineyards below 600 m",
+    )
+
+    with pytest.raises(NoReferenceLocationError):
+        validate_reference_location_present(query)
+
+
+def test_validate_query_raises_for_missing_location(spatial_config):
+    """Test that validate_query raises NoReferenceLocationError before other checks."""
+    query = GeoQuery(
+        query_type="simple",
+        spatial_relation=SpatialRelation(relation="in", category="containment"),
+        reference_location=None,
+        buffer_config=None,
+        confidence_breakdown=ConfidenceScore(
+            overall=0.95,
+            location_confidence=0.0,
+            relation_confidence=0.95,
+        ),
+        original_query="slopes steeper than 30°",
+    )
+
+    with pytest.raises(NoReferenceLocationError):
+        validate_query(query, spatial_config)
 
 
 def test_validate_known_relation(spatial_config, sample_query):

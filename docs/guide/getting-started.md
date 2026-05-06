@@ -54,8 +54,8 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=os.getenv("LLM_API_KEY")
 parser = GeoFilterParser(llm=llm)
 result = parser.parse("north of Lausanne")
 
-print(result.spatial_relation.relation)       # "north_of"
-print(result.reference_location.name)         # "Lausanne"
+print(result.spatial_relation.relation)                            # "north_of"
+print(result.reference_location.name if result.reference_location else None)  # "Lausanne"
 print(result.buffer_config.distance_m)        # 10000
 print(result.confidence_breakdown.overall)    # 0.95
 ```

@@ -175,7 +175,7 @@ Structured output model representing the parsed geographic filter.
 
 - `query_type`: Type of query (simple, compound, split, boolean)
 - `spatial_relation`: Spatial relationship (e.g., "north_of", "in", "near")
-- `reference_location`: Reference location (e.g., "Lausanne")
+- `reference_location`: Reference location (e.g., "Lausanne"), or `None` for attribute-only queries
 - `buffer_config`: Buffer parameters (optional)
 - `confidence_breakdown`: Confidence scores
 - `original_query`: Original input text
