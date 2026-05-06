@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0](https://github.com/geoblocks/etter/compare/v0.2.1...v0.3.0) (2026-05-06)
+
+
+### Features
+
+* add geometry output format selection (GeoJSON, WKT, WKB) ([#107](https://github.com/geoblocks/etter/issues/107)) ([22ded27](https://github.com/geoblocks/etter/commit/22ded2762507a2e26650e1ac713b619cbf6c7e15))
+* reject attribute-only queries with NoReferenceLocationError ([#112](https://github.com/geoblocks/etter/issues/112)) ([85432ff](https://github.com/geoblocks/etter/commit/85432ffa4c29172fd6629626f6cde1ceaa42d2de))
+* store llm model as env var ([#16](https://github.com/geoblocks/etter/issues/16)) ([1dc9d05](https://github.com/geoblocks/etter/commit/1dc9d05888a65d884f1f05867507be4d8aa07f3f))
+
 ## [0.2.1](https://github.com/geoblocks/etter/compare/v0.2.0...v0.2.1) (2026-04-23)
 
 
