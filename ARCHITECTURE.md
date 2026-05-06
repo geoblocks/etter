@@ -66,7 +66,7 @@ Here's what happens when you do a query in the demo:
 1. INPUT: "Hiking with children north of Lausanne"
    ↓
 2. PARSER (Layer 1)
-   - Extracts: spatial_relation="north_of", reference_location="Lausanne"
+   - Extracts: spatial_relation="north_of", reference_location="Lausanne" (None if no named location)
    - Confidence: 0.95
    - Buffer: 10000m (default for directional)
    ↓
@@ -152,7 +152,7 @@ Transforms reference geometries into search areas.
 ```python
 GeoQuery(
     spatial_relation=SpatialRelation(relation="north_of", ...),
-    reference_location=ReferenceLocation(name="Lausanne", ...),
+    reference_location=ReferenceLocation(name="Lausanne", ...),  # None for attribute-only queries
     buffer_config=BufferConfig(distance_m=10000, ...),
     confidence_breakdown=...
 )
@@ -205,7 +205,7 @@ etter supports four query complexity levels through the `query_type` field in `G
 
 Only `simple` queries are currently supported. A simple query has:
 - **One spatial relation** (e.g., "north", "in", "near")
-- **One reference location** (e.g., "Lausanne", a city, a canton)
+- **One reference location** (e.g., "Lausanne", a city, a canton) — queries without a named location raise `NoReferenceLocationError`
 - Optional: Buffer distance configuration
 
 Example flow:

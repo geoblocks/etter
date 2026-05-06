@@ -8,7 +8,8 @@ etter raises structured exceptions so you can handle each failure mode precisely
 GeoFilterError
 ├── ParsingError          — LLM failed to produce valid structured output
 ├── ValidationError
-│   └── UnknownRelationError  — relation not in registered config
+│   ├── NoReferenceLocationError  — query has no named geographic location
+│   └── UnknownRelationError      — relation not in registered config
 └── LowConfidenceError    — confidence below threshold (strict mode only)
 
 UserWarning
@@ -29,6 +30,20 @@ try:
 except ParsingError as e:
     print(f"Parsing failed: {e}")
     print(f"Raw LLM response: {e.raw_response}")
+```
+
+## NoReferenceLocationError
+
+Raised when the query contains no named geographic location — for example pure attribute queries like "vineyards below 600 m" or "slopes steeper than 30°". These are dataset-level attribute filters that must be handled at the application layer; etter only understands spatial relations to named places.
+
+```python
+from etter import NoReferenceLocationError
+
+try:
+    result = parser.parse("vineyards below 600 m")
+except NoReferenceLocationError:
+    # No named location — apply the attribute filter in your own query layer
+    ...
 ```
 
 ## UnknownRelationError
@@ -77,6 +92,7 @@ except LowConfidenceError as e:
 ```python
 from etter import (
     GeoFilterParser,
+    NoReferenceLocationError,
     ParsingError,
     UnknownRelationError,
     LowConfidenceError,
@@ -84,6 +100,9 @@ from etter import (
 
 try:
     result = parser.parse(user_query)
+except NoReferenceLocationError:
+    # Query has no named location — handle attribute filter in the application layer
+    return {"error": "Query has no geographic location reference"}
 except ParsingError as e:
     # LLM output was malformed
     log.error("Parse failed", raw=e.raw_response)

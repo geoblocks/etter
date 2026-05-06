@@ -43,6 +43,13 @@ class ValidationError(GeoFilterError):
         super().__init__(message)
 
 
+class NoReferenceLocationError(ValidationError):
+    """Query contains no named geographic reference location."""
+
+    def __init__(self, message: str):
+        super().__init__(message, field="reference_location")
+
+
 class UnknownRelationError(ValidationError):
     """Spatial relation is not registered in configuration."""
 

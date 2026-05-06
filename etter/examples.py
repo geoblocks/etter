@@ -30,12 +30,14 @@ class ExampleQuery:
         output: Expected GeoQuery structure
         language: Language code (en, de, fr, it)
         description: What this example demonstrates
+        exclude_none: Whether to omit None fields in JSON output (default True)
     """
 
     input: str
     output: GeoQuery
     language: str
     description: str
+    exclude_none: bool = True
 
 
 # Define examples covering key scenarios
@@ -202,6 +204,26 @@ EXAMPLES: list[ExampleQuery] = [
             original_query="rive droite du Rhône",
         ),
     ),
+    # No named location — attribute-only query (English)
+    ExampleQuery(
+        input="vineyards below 600 m",
+        language="en",
+        description="No named location — attribute-only query, reference_location must be null",
+        exclude_none=False,
+        output=GeoQuery(
+            query_type="simple",
+            spatial_relation=SpatialRelation(relation="in", category="containment", explicit_distance=None),
+            reference_location=None,
+            buffer_config=None,
+            confidence_breakdown=ConfidenceScore(
+                overall=0.95,
+                location_confidence=0.0,
+                relation_confidence=0.95,
+                reasoning="No named geographic location in query — only an attribute threshold (elevation < 600m)",
+            ),
+            original_query="vineyards below 600 m",
+        ),
+    ),
     # Multilingual and complex (French)
     ExampleQuery(
         input="near Lake Geneva",
@@ -239,7 +261,9 @@ def format_examples_for_prompt() -> str:
 
     for ex in EXAMPLES:
         examples_text.append(f"Q: {ex.input}")
-        examples_text.append(f"A: {ex.output.model_dump_json(exclude_none=True, exclude={'original_query'})}")
+        examples_text.append(
+            f"A: {ex.output.model_dump_json(exclude_none=ex.exclude_none, exclude={'original_query'})}"
+        )
         examples_text.append("")
 
     return "\n".join(examples_text)

@@ -4,9 +4,23 @@ Validation logic for parsed queries.
 
 import warnings
 
-from .exceptions import LowConfidenceError, LowConfidenceWarning, UnknownRelationError
+from .exceptions import LowConfidenceError, LowConfidenceWarning, NoReferenceLocationError, UnknownRelationError
 from .models import BufferConfig, GeoQuery
 from .spatial_config import SpatialRelationConfig
+
+
+def validate_reference_location_present(geo_query: GeoQuery) -> None:
+    """
+    Validate that the query contains a named reference location.
+
+    Args:
+        geo_query: Parsed query to validate
+
+    Raises:
+        NoReferenceLocationError: If reference_location is None
+    """
+    if geo_query.reference_location is None:
+        raise NoReferenceLocationError("Query has no named geographic reference location.")
 
 
 def validate_spatial_relation(geo_query: GeoQuery, spatial_config: SpatialRelationConfig) -> None:
@@ -165,6 +179,7 @@ def validate_query(
     Run complete validation pipeline on a parsed query.
 
     This is a convenience function that runs all validation steps in order:
+    0. Validate reference location is present
     1. Validate spatial relation is registered
     2. Enrich with defaults from config
     3. Validate buffer config consistency
@@ -180,10 +195,14 @@ def validate_query(
         Validated and enriched GeoQuery
 
     Raises:
+        NoReferenceLocationError: If reference_location is None
         UnknownRelationError: If spatial relation not registered
         ValidationError: If validation checks fail
         LowConfidenceError: If strict mode and confidence below threshold
     """
+    # 0. Validate reference location is present
+    validate_reference_location_present(geo_query)
+
     # 1. Validate spatial relation
     validate_spatial_relation(geo_query, spatial_config)
 

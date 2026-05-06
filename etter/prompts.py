@@ -74,6 +74,15 @@ Location Name Extraction:
 - Do NOT normalize, translate, or create canonical forms - the geodata layer handles that
 - Preserve the language and spelling used in the query
 
+No Named Location:
+- If the query contains NO named geographic location (city, river, lake, region, mountain, etc.),
+  set reference_location to null.
+- Examples of queries with no named location:
+  * "vineyards below 600 m" → reference_location: null
+  * "slopes steeper than 30°" → reference_location: null
+  * "buildings before 1900" → reference_location: null
+- Do NOT hallucinate a location name from numeric values or attribute thresholds.
+
 Distance Extraction:
 - Extract explicit distances: "within 5km" → explicit_distance=5000
 - Convert units to meters: "5km" → 5000, "500 meters" → 500, "2 miles" → 3219
