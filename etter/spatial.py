@@ -23,61 +23,33 @@ _DEFAULT_SPATIAL_CONFIG = SpatialRelationConfig()  # Module-level singleton for 
 
 
 def apply_spatial_relation(
-    geometry: dict[str, Any],
+    geometry: dict[str, Any] | list[dict[str, Any]],
     relation: SpatialRelation,
     buffer_config: BufferConfig | None = None,
     spatial_config: SpatialRelationConfig | None = None,
     geometry_format: GeometryFormat = "geojson",
 ) -> dict[str, Any] | str:
-    """
-    Transform a reference geometry according to a spatial relation.
+    """Transform one or more reference geometries according to a spatial relation.
 
-    Converts the input GeoJSON geometry to a search area based on the
-    spatial relation category:
-    - Containment: returns the original geometry unchanged
-    - Buffer: applies positive (expand), negative (erode), or ring buffer
-    - Directional: creates an angular sector wedge
+    A list of geometries is unioned into one before the transformation, so that
+    features split across multiple datasource records (e.g. a river in segments)
+    produce a single coherent search area.
 
     Args:
-        geometry: GeoJSON geometry dict in WGS84 (EPSG:4326).
+        geometry: GeoJSON geometry dict or non-empty list of dicts (WGS84).
         relation: Spatial relation to apply.
-        buffer_config: Buffer configuration (required for buffer/directional relations).
-        spatial_config: Spatial relation registry used to look up directional angles.
-            Defaults to the module-level singleton; pass an explicit instance to
-            avoid repeated construction when calling from a hot path.
-        geometry_format: Output format for the geometry. "geojson" (default) returns a
-            GeoJSON dict, "wkt" returns a WKT string, "wkb" returns a hex-encoded WKB string.
+        buffer_config: Required for buffer/directional relations.
+        spatial_config: Relation registry; defaults to the module-level singleton.
+        geometry_format: "geojson" (default), "wkt", or "wkb".
 
     Returns:
-        Transformed geometry in the requested format (GeoJSON dict, WKT string, or WKB hex string).
-
-    Raises:
-        ValueError: If buffer_config is missing for buffer/directional relations,
-                     or if the relation category is unknown.
-
-    Examples:
-        >>> from etter.models import SpatialRelation, BufferConfig
-        >>> # Circular buffer as GeoJSON (default)
-        >>> result = apply_spatial_relation(
-        ...     geometry={"type": "Point", "coordinates": [6.63, 46.52]},
-        ...     relation=SpatialRelation(relation="near", category="buffer"),
-        ...     buffer_config=BufferConfig(distance_m=5000, buffer_from="center"),
-        ... )
-
-        >>> # Same buffer as WKT
-        >>> result = apply_spatial_relation(
-        ...     geometry={"type": "Point", "coordinates": [6.63, 46.52]},
-        ...     relation=SpatialRelation(relation="near", category="buffer"),
-        ...     buffer_config=BufferConfig(distance_m=5000, buffer_from="center"),
-        ...     geometry_format="wkt",
-        ... )
-
-        >>> # Containment (passthrough)
-        >>> result = apply_spatial_relation(
-        ...     geometry=city_polygon,
-        ...     relation=SpatialRelation(relation="in", category="containment"),
-        ... )
+        Transformed geometry in the requested format.
     """
+    if isinstance(geometry, list):
+        if not geometry:
+            raise ValueError("geometry list must not be empty")
+        geometry = mapping(unary_union([shape(g) for g in geometry]))
+
     if relation.category == "containment":
         result = _apply_containment(geometry)
     elif relation.category == "buffer":

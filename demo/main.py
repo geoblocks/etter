@@ -113,25 +113,21 @@ parser = GeoFilterParser(llm, datasource=datasource)
 
 
 def _build_result_features(geo_query, reference_features: list) -> list:
-    """Apply spatial relations and return a flat list of (search_area, reference) Feature dicts."""
-    result_features = []
-    for i, reference_feature in enumerate(reference_features):
-        search_area = apply_spatial_relation(
-            reference_feature["geometry"], geo_query.spatial_relation, geo_query.buffer_config
-        )
-        result_features.append(
-            {
-                "type": "Feature",
-                "geometry": search_area,
-                "properties": {
-                    "role": "search_area",
-                    "relation": geo_query.spatial_relation.relation,
-                    "reference_index": i,
-                    "reference_name": reference_feature["properties"]["name"],
-                },
-            }
-        )
-        result_features.append(reference_feature)
+    """Build a flat list of (search_area, reference) Feature dicts for the given query."""
+    geometries = [f["geometry"] for f in reference_features]
+    search_area = apply_spatial_relation(geometries, geo_query.spatial_relation, geo_query.buffer_config)
+    result_features = [
+        {
+            "type": "Feature",
+            "geometry": search_area,
+            "properties": {
+                "role": "search_area",
+                "relation": geo_query.spatial_relation.relation,
+                "reference_name": reference_features[0]["properties"]["name"] if reference_features else None,
+            },
+        }
+    ]
+    result_features.extend(reference_features)
     return result_features
 
 
