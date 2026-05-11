@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 
 ConfidenceLevel = Annotated[float, Field(ge=0.0, le=1.0, description="Confidence score between 0 and 1")]
 
-RelationCategory = Literal["containment", "buffer", "directional"]
+RelationCategory = Literal["containment", "buffer", "directional", "clipping"]
 GeometryFormat = Literal["geojson", "wkt", "wkb"]
 
 
@@ -102,8 +102,9 @@ class SpatialRelation(BaseModel):
     category: RelationCategory = Field(
         description="Category of spatial relation. "
         "'containment' = exact boundary matching (in), "
-        "'buffer' = proximity or erosion operations (near, around, on_shores_of, in_the_heart_of), "
-        "'directional' = sector-based queries (north_of, south_of, east_of, west_of)"
+        "'buffer' = proximity or erosion operations (near, around, on_shores_of, in_the_heart_of, bordering), "
+        "'directional' = sector-based queries (north_of, south_of, east_of, west_of), "
+        "'clipping' = clip reference to a directional half (northern_part_of, southern_part_of, etc.)"
     )
     explicit_distance: float | None = Field(
         None,
@@ -138,7 +139,10 @@ class GeoQuery(BaseModel):
         "Set to None for containment relations ('in').",
     )
     confidence_breakdown: ConfidenceScore = Field(description="Confidence scores for different aspects of the parse")
-    original_query: str = Field(description="Original query text exactly as provided by the user")
+    original_query: str = Field(
+        default="",
+        description="Original query text exactly as provided by the user",
+    )
 
     @model_validator(mode="after")
     def validate_buffer_config_consistency(self) -> "GeoQuery":
@@ -149,8 +153,8 @@ class GeoQuery(BaseModel):
                 f"{self.spatial_relation.category} relation '{self.spatial_relation.relation}' requires buffer_config"
             )
 
-        # Containment relations should not have buffer_config
-        if self.spatial_relation.category == "containment" and self.buffer_config is not None:
+        # Containment and clipping relations should not have buffer_config
+        if self.spatial_relation.category in ("containment", "clipping") and self.buffer_config is not None:
             raise ValueError(
                 f"{self.spatial_relation.category} relation '{self.spatial_relation.relation}' "
                 f"should not have buffer_config"

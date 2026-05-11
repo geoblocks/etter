@@ -1,6 +1,6 @@
 # Spatial Relations
 
-etter supports 15 built-in spatial relations across three categories.
+etter supports 20 built-in spatial relations across four categories.
 
 ## Containment
 
@@ -20,10 +20,26 @@ etter supports 15 built-in spatial relations across three categories.
 | `right_bank` | Right bank of a linear feature (relative to flow direction) | 500 m |
 | `on_shores_of` | Ring buffer around a water boundary, excluding the water body | 1 km ring |
 | `in_the_heart_of` | Negative buffer (erosion) toward center | −500 m |
+| `bordering` | Thin ring just outside the reference boundary, for land-border adjacency | 2 km ring |
 
 **One-sided buffers:** `left_bank` and `right_bank` produce a buffer on a single side of a linear feature (river, road) relative to its direction of flow.
 
-**Ring buffer:** `on_shores_of` uses `ring_only=True` — the reference geometry itself is subtracted, leaving only the surrounding ring.
+**Ring buffer:** `on_shores_of` and `bordering` use `ring_only=True` — the reference geometry itself is subtracted, leaving only the surrounding ring.
+
+**Example:** `"cities bordering Germany"` → 2 km ring just outside Germany's boundary, excluding Germany itself.
+
+## Clipping
+
+Clipping relations clip the reference geometry to a directional half-plane. They answer *"what is in the northern/southern/eastern/western portion of X?"* — as opposed to directional relations, which answer *"what is north/south/east/west of X?"*.
+
+| Relation | Behavior |
+|----------|----------|
+| `northern_part_of` | Clip reference geometry to its northern bbox half (above midpoint latitude) |
+| `southern_part_of` | Clip reference geometry to its southern bbox half (below midpoint latitude) |
+| `eastern_part_of` | Clip reference geometry to its eastern bbox half (right of midpoint longitude) |
+| `western_part_of` | Clip reference geometry to its western bbox half (left of midpoint longitude) |
+
+**Example:** `"ski resorts in the northern part of Switzerland"` → Switzerland's polygon clipped to the area north of its bbox midpoint.
 
 ## Directional
 
