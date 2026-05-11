@@ -62,7 +62,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.95,
                 reasoning=None,
             ),
-            original_query="restaurants in Geneva",
         ),
     ),
     # Buffer query with LLM-inferred distance (English)
@@ -85,7 +84,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.95,
                 reasoning=None,
             ),
-            original_query="hotels within 5km of Lausanne",
         ),
     ),
     ExampleQuery(
@@ -100,14 +98,13 @@ EXAMPLES: list[ExampleQuery] = [
                 type="city",
                 type_confidence=0.95,
             ),
-            buffer_config=BufferConfig(distance_m=2000, buffer_from="boundary", ring_only=False, inferred=True),
+            buffer_config=BufferConfig(distance_m=5000, buffer_from="boundary", ring_only=False, inferred=True),
             confidence_breakdown=ConfidenceScore(
                 overall=0.90,
                 location_confidence=0.95,
                 relation_confidence=0.90,
-                reasoning="'near Lausanne' → city is a polygon feature → near with buffer from boundary",
+                reasoning="'near Lausanne' → city is a polygon feature → near with buffer from boundary, default 5km",
             ),
-            original_query="near Lausanne",
         ),
     ),
     # Directional (English)
@@ -130,7 +127,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.95,
                 reasoning=None,
             ),
-            original_query="hiking north of Bern",
         ),
     ),
     # Time-based distance - walking (English)
@@ -153,7 +149,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.90,
                 reasoning="'30 minutes walking' converted to 2500m buffer (5km/h walking speed)",
             ),
-            original_query="30 minutes walking from the station",
         ),
     ),
     # Complex query with multiple features (English)
@@ -176,7 +171,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.90,
                 reasoning="'Heart of a small village' → small area erosion -500m",
             ),
-            original_query="in the heart of a small village",
         ),
     ),
     # Right bank of a river (French)
@@ -201,7 +195,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.95,
                 reasoning="'rive droite' clearly indicates the right bank of the river",
             ),
-            original_query="rive droite du Rhône",
         ),
     ),
     # No named location — attribute-only query (English)
@@ -221,7 +214,47 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.95,
                 reasoning="No named geographic location in query — only an attribute threshold (elevation < 600m)",
             ),
-            original_query="vineyards below 600 m",
+        ),
+    ),
+    # Clipping relation (English) — one example is sufficient; the LLM generalises to
+    # southern_part_of / eastern_part_of / western_part_of by analogy with the relation names.
+    ExampleQuery(
+        input="ski resorts in the northern part of the Mittelland",
+        language="en",
+        description="Clipping — clip reference geometry to its northern bbox half",
+        output=GeoQuery(
+            query_type="simple",
+            spatial_relation=SpatialRelation(relation="northern_part_of", category="clipping", explicit_distance=None),
+            reference_location=ReferenceLocation(name="Mittelland", type="region", type_confidence=0.92),
+            buffer_config=None,
+            confidence_breakdown=ConfidenceScore(
+                overall=0.92,
+                location_confidence=0.92,
+                relation_confidence=0.95,
+                reasoning="'in the northern part of the Mittelland' → clip to northern bbox half",
+            ),
+        ),
+    ),
+    # Bordering relation (English)
+    ExampleQuery(
+        input="cities bordering Germany",
+        language="en",
+        description="Bordering relation — ring buffer just outside Germany's boundary for land-border adjacency",
+        output=GeoQuery(
+            query_type="simple",
+            spatial_relation=SpatialRelation(relation="bordering", category="buffer", explicit_distance=None),
+            reference_location=ReferenceLocation(
+                name="Germany",
+                type="country",
+                type_confidence=0.98,
+            ),
+            buffer_config=BufferConfig(distance_m=2000, buffer_from="boundary", ring_only=True, inferred=True),
+            confidence_breakdown=ConfidenceScore(
+                overall=0.95,
+                location_confidence=0.98,
+                relation_confidence=0.95,
+                reasoning="'bordering Germany' → ring buffer just outside Germany's land border",
+            ),
         ),
     ),
     # Multilingual and complex (French)
@@ -244,7 +277,6 @@ EXAMPLES: list[ExampleQuery] = [
                 relation_confidence=0.90,
                 reasoning="'near Lake Geneva' → lake is an AREA feature → on_shores_of with ring buffer",
             ),
-            original_query="near Lake Geneva",
         ),
     ),
 ]

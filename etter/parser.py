@@ -132,8 +132,7 @@ class GeoFilterParser:
 
     def _finalize(self, geo_query: GeoQuery, query: str) -> GeoQuery:
         """Set original_query and run the validation pipeline."""
-        if not geo_query.original_query or geo_query.original_query != query:
-            geo_query.original_query = query
+        geo_query.original_query = query
 
         return validate_query(
             geo_query,

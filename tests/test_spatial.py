@@ -127,6 +127,29 @@ def test_right_side_buffer():
     assert not result_shape.contains(Point(1, 0.5))  # North of line (left)
 
 
+def test_clipping():
+    """Test all four clipping directions produce the correct half of the reference geometry."""
+    # 10x10 degree square centred at (5,5): lon 0-10, lat 0-10
+    poly = Polygon([(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)])
+    geom = mapping(poly)
+
+    cases = [
+        ("northern_part_of", (0.0, 5.0, 10.0, 10.0)),
+        ("southern_part_of", (0.0, 0.0, 10.0, 5.0)),
+        ("eastern_part_of", (5.0, 0.0, 10.0, 10.0)),
+        ("western_part_of", (0.0, 0.0, 5.0, 10.0)),
+    ]
+    for relation_name, expected_bounds in cases:
+        relation = SpatialRelation(relation=relation_name, category="clipping")
+        result = apply_spatial_relation(geom, relation)
+        result_bounds = shape(result).bounds
+        assert result_bounds == expected_bounds, (
+            f"{relation_name}: expected bounds {expected_bounds}, got {result_bounds}"
+        )
+        # Clipped area should be exactly half the original
+        assert abs(shape(result).area - poly.area / 2) < 1e-9
+
+
 def test_side_none_symmetric_buffer():
     """Test that side=None preserves existing symmetric buffer behavior."""
     line = LineString([(0, 0), (2, 0)])

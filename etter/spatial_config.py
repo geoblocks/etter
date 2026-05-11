@@ -34,6 +34,7 @@ class RelationConfig:
     side: Literal["left", "right"] | None = None
     sector_angle_degrees: float | None = None
     direction_angle_degrees: float | None = None
+    clip_direction: Literal["north", "south", "east", "west"] | None = None
 
 
 class SpatialRelationConfig:
@@ -121,6 +122,57 @@ class SpatialRelationConfig:
                 description="Central area excluding periphery (negative buffer - erosion)",
                 default_distance_m=-500,
                 buffer_from="boundary",
+            )
+        )
+
+        self.register_relation(
+            RelationConfig(
+                name="bordering",
+                category="buffer",
+                description="Thin ring just outside the reference boundary, for land-border adjacency queries (e.g. 'cities bordering Germany')",
+                default_distance_m=2000,
+                buffer_from="boundary",
+                ring_only=True,
+            )
+        )
+
+        # ===== CLIPPING RELATIONS =====
+        # Clip the reference geometry to a directional half-plane using bbox intersection.
+        # These answer "what is in the northern/southern/eastern/western portion of X?"
+        # as opposed to directional relations which answer "what is north/south/etc. of X?".
+        self.register_relation(
+            RelationConfig(
+                name="northern_part_of",
+                category="clipping",
+                description="Northern half of the reference geometry (bbox clip to upper half)",
+                clip_direction="north",
+            )
+        )
+
+        self.register_relation(
+            RelationConfig(
+                name="southern_part_of",
+                category="clipping",
+                description="Southern half of the reference geometry (bbox clip to lower half)",
+                clip_direction="south",
+            )
+        )
+
+        self.register_relation(
+            RelationConfig(
+                name="eastern_part_of",
+                category="clipping",
+                description="Eastern half of the reference geometry (bbox clip to right half)",
+                clip_direction="east",
+            )
+        )
+
+        self.register_relation(
+            RelationConfig(
+                name="western_part_of",
+                category="clipping",
+                description="Western half of the reference geometry (bbox clip to left half)",
+                clip_direction="west",
             )
         )
 
@@ -282,7 +334,8 @@ class SpatialRelationConfig:
         # Add notes
         lines.append("\nNOTES:")
         lines.append("  • Negative distances indicate erosion/shrinking (e.g., in_the_heart_of)")
-        lines.append("  • Ring buffers exclude the reference feature itself (e.g., shores of lake)")
+        lines.append("  • Ring buffers exclude the reference feature itself (e.g., shores of lake, bordering)")
         lines.append("  • Buffer from 'center' vs 'boundary' determines buffer origin")
+        lines.append("  • Clipping relations return a sub-area of the reference geometry (not a buffer outward)")
 
         return "\n".join(lines)

@@ -9,7 +9,7 @@ Shapely is used internally for geometry operations.
 import math
 from typing import Any
 
-from shapely.geometry import MultiLineString, mapping, shape
+from shapely.geometry import MultiLineString, box, mapping, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.linestring import LineString
 from shapely.geometry.polygon import Polygon
@@ -92,6 +92,11 @@ def apply_spatial_relation(
         direction = relation_config.direction_angle_degrees or 0
         sector_angle = relation_config.sector_angle_degrees or 90
         result = _apply_directional(geometry, buffer_config, direction, sector_angle)
+    elif relation.category == "clipping":
+        cfg = spatial_config if spatial_config is not None else _DEFAULT_SPATIAL_CONFIG
+        relation_config = cfg.get_config(relation.relation)
+        clip_direction = relation_config.clip_direction or "north"
+        result = _apply_clipping(geometry, clip_direction)
     else:
         raise ValueError(f"Unknown relation category: '{relation.category}'")
 
@@ -101,6 +106,35 @@ def apply_spatial_relation(
 def _apply_containment(geometry: dict[str, Any]) -> dict[str, Any]:
     """Return the geometry unchanged for containment relations."""
     return geometry
+
+
+def _apply_clipping(geometry: dict[str, Any], clip_direction: str) -> dict[str, Any]:
+    """
+    Clip a geometry to a directional half-plane using its bounding box midpoint.
+
+    For example, "northern_part_of Switzerland" clips Switzerland's polygon to its
+    northern half — the area above the bbox midpoint latitude.
+    """
+    geom = shape(geometry)
+    minx, miny, maxx, maxy = geom.bounds
+    midx = (minx + maxx) / 2
+    midy = (miny + maxy) / 2
+
+    if clip_direction == "north":
+        clip_box = box(minx, midy, maxx, maxy)
+    elif clip_direction == "south":
+        clip_box = box(minx, miny, maxx, midy)
+    elif clip_direction == "east":
+        clip_box = box(midx, miny, maxx, maxy)
+    else:  # west
+        clip_box = box(minx, miny, midx, maxy)
+
+    clipped = geom.intersection(clip_box)
+
+    if clipped.is_empty:
+        return geometry  # Fallback — should never happen for a valid half-plane clip
+
+    return mapping(clipped)
 
 
 def _apply_buffer(geometry: dict[str, Any], config: BufferConfig) -> dict[str, Any]:

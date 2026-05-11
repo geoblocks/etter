@@ -100,7 +100,7 @@ Extracts intent from text using an LLM.
 - **Output**: `GeoQuery` object (Pydantic model)
 - **Key Features**:
   - Multilingual support
-  - 15 spatial relations (containment, buffer, directional)
+  - spatial relations: containment, buffer, directional, clipping
   - Distance inference ("10 min walk" → 833m)
   - Confidence scoring
 
@@ -141,6 +141,7 @@ Transforms reference geometries into search areas.
   - **Containment**: Passthrough (exact boundary)
   - **Buffer**: Positive (expand), Negative (erode), Ring (donut)
   - **Directional**: Angular sector wedges (e.g., North = 90° wedge)
+  - **Clipping**: Bbox half-plane intersection (e.g., northern half of a country)
 - **Technology**: Uses `shapely` + `pyproj` internally, input is WGS84 GeoJSON; output format is configurable (`"geojson"` dict, `"wkt"` string, or `"wkb"` hex string).
 
 ---
@@ -177,16 +178,17 @@ Standard GeoJSON dictionary structure:
 
 ---
 
-## Spatial Relations (15 Total)
+## Spatial Relations
 
 | Category (`category=`) | Relations | Behavior |
 |------------------------|-----------|----------|
 | **`containment`** | `in` | Exact geometry match |
 | **`buffer`** | `near`, `along` | Circular/Linear buffer with context-aware distances |
 | **`buffer`** (one-sided) | `left_bank`, `right_bank` | Buffer on one side of a linear feature relative to flow direction |
-| **`buffer`** (ring) | `on_shores_of` | Buffer - Original (Donut) |
+| **`buffer`** (ring) | `on_shores_of`, `bordering` | Buffer - Original (Donut) |
 | **`buffer`** (erosion) | `in_the_heart_of` | Negative buffer (shrink) with context-aware depth |
 | **`directional`** | `north_of`, `south_of`, `east_of`, `west_of`, `northeast_of`, `southeast_of`, `southwest_of`, `northwest_of` | 90° Sector Wedge |
+| **`clipping`** | `northern_part_of`, `southern_part_of`, `eastern_part_of`, `western_part_of` | Bbox half-plane intersection (sub-area of reference) |
 
 ---
 
