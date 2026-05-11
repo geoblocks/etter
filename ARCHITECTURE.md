@@ -68,7 +68,7 @@ Here's what happens when you do a query in the demo:
 2. PARSER (Layer 1)
    - Extracts: spatial_relation="north_of", reference_location="Lausanne" (None if no named location)
    - Confidence: 0.95
-   - Buffer: 10000m (default for directional)
+   - Buffer: inferred=True, distance placeholder (final distance set in Layer 3 from geometry area)
    ↓
 3. DATASOURCE (Layer 2)
    - Searches: name="Lausanne", type="settlement" (inferred)
@@ -76,9 +76,10 @@ Here's what happens when you do a query in the demo:
    - Confidence: 1.0 (exact match)
    ↓
 4. SPATIAL OPERATIONS (Layer 3)
+   - Geodesic area of Lausanne geometry → bracket → radius (e.g. 5 000 m for a city polygon)
    - Centroid: (6.63, 46.52)
    - Direction: North (0°)
-   - Creates: 90° sector polygon extending 10km north
+   - Creates: 90° sector polygon extending ~5km north
    ↓
 5. OUTPUT: GeoJSON FeatureCollection
    {
@@ -101,7 +102,7 @@ Extracts intent from text using an LLM.
 - **Key Features**:
   - Multilingual support
   - spatial relations: containment, buffer, directional, clipping
-  - Distance inference ("10 min walk" → 833m)
+  - Distance inference ("10 min walk" → 833m set as `explicit_distance` by LLM; geometry-area-based default applied in Layer 3 when no explicit distance)
   - Confidence scoring
 
 ### 2. GeoDataSource (Layer 2)
@@ -142,6 +143,16 @@ Transforms reference geometries into search areas.
   - **Buffer**: Positive (expand), Negative (erode), Ring (donut)
   - **Directional**: Angular sector wedges (e.g., North = 90° wedge)
   - **Clipping**: Bbox half-plane intersection (e.g., northern half of a country)
+- **Area-based distance inference**: When `buffer_config.inferred=True` (no explicit distance in the query), `apply_spatial_relation` computes the geodesic area of the reference geometry (via `pyproj.Geod`) and selects a distance from area-based brackets:
+
+  | Geometry area | Proximity default | Erosion default |
+  |---|---|---|
+  | < 1 km² (point, station) | 500 m | −200 m |
+  | 1–50 km² (town, small lake) | 1 500 m | −500 m |
+  | 50–500 km² (city, medium region) | 5 000 m | −1 000 m |
+  | ≥ 500 km² (canton, country) | 15 000 m | −2 000 m |
+
+  If `explicit_distance` is set (user stated "within 5km", "30 min walk", etc.), it always takes precedence.
 - **Technology**: Uses `shapely` + `pyproj` internally, input is WGS84 GeoJSON; output format is configurable (`"geojson"` dict, `"wkt"` string, or `"wkb"` hex string).
 
 ---
@@ -183,10 +194,10 @@ Standard GeoJSON dictionary structure:
 | Category (`category=`) | Relations | Behavior |
 |------------------------|-----------|----------|
 | **`containment`** | `in` | Exact geometry match |
-| **`buffer`** | `near`, `along` | Circular/Linear buffer with context-aware distances |
+| **`buffer`** | `near`, `along` | Circular/Linear buffer; distance inferred from geometry area when not explicit |
 | **`buffer`** (one-sided) | `left_bank`, `right_bank` | Buffer on one side of a linear feature relative to flow direction |
-| **`buffer`** (ring) | `on_shores_of`, `bordering` | Buffer - Original (Donut) |
-| **`buffer`** (erosion) | `in_the_heart_of` | Negative buffer (shrink) with context-aware depth |
+| **`buffer`** (ring) | `on_shores_of`, `bordering` | Buffer - Original (Donut); distance inferred from geometry area when not explicit |
+| **`buffer`** (erosion) | `in_the_heart_of` | Negative buffer (shrink); erosion depth inferred from geometry area when not explicit |
 | **`directional`** | `north_of`, `south_of`, `east_of`, `west_of`, `northeast_of`, `southeast_of`, `southwest_of`, `northwest_of` | 90° Sector Wedge |
 | **`clipping`** | `northern_part_of`, `southern_part_of`, `eastern_part_of`, `western_part_of` | Bbox half-plane intersection (sub-area of reference) |
 

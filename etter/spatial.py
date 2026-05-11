@@ -6,20 +6,107 @@ All inputs and outputs are GeoJSON dicts in WGS84 (EPSG:4326).
 Shapely is used internally for geometry operations.
 """
 
-import math
 from typing import Any
 
+from pyproj import Geod, Transformer
 from shapely.geometry import MultiLineString, box, mapping, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.linestring import LineString
 from shapely.geometry.polygon import Polygon
-from shapely.ops import linemerge, unary_union
+from shapely.ops import linemerge, transform, unary_union
 
 from .geometry_format import convert_geometry
 from .models import BufferConfig, GeometryFormat, SpatialRelation
 from .spatial_config import SpatialRelationConfig
 
 _DEFAULT_SPATIAL_CONFIG = SpatialRelationConfig()  # Module-level singleton for default spatial relation configuration.
+_GEOD = Geod(ellps="WGS84")  # Geodesic calculator for accurate area and arc computation.
+
+
+def _local_transformers(lon: float, lat: float) -> tuple[Transformer, Transformer]:
+    """Return (to_local, to_wgs84) Transformers for an azimuthal equidistant CRS
+    centred at (lon, lat).  Distances in the local CRS are in metres with low
+    distortion within a few hundred kilometres of the centre point.
+    """
+    aeqd = f"+proj=aeqd +lat_0={lat} +lon_0={lon} +datum=WGS84 +units=m"
+    to_local = Transformer.from_crs("EPSG:4326", aeqd, always_xy=True)
+    to_wgs84 = Transformer.from_crs(aeqd, "EPSG:4326", always_xy=True)
+    return to_local, to_wgs84
+
+
+# Area thresholds in m² used for distance inference from geometry size.
+# Brackets: point/tiny (<1 km²), small (1–50 km²), medium (50–500 km²), large (>500 km²)
+_AREA_DISTANCE_BRACKETS: list[tuple[float, int]] = [
+    (1_000_000, 500),  # < 1 km²   → 500 m
+    (50_000_000, 1_500),  # < 50 km²  → 1 500 m
+    (500_000_000, 5_000),  # < 500 km² → 5 000 m
+]
+_AREA_DISTANCE_DEFAULT = 15_000  # ≥ 500 km² → 15 000 m
+
+# Erosion distances mirror the positive brackets (negative values).
+_AREA_EROSION_BRACKETS: list[tuple[float, int]] = [
+    (1_000_000, -200),
+    (50_000_000, -500),
+    (500_000_000, -1_000),
+]
+_AREA_EROSION_DEFAULT = -2_000
+
+
+def _area_m2(geom: BaseGeometry) -> float:
+    """Return the geodesic area of a Shapely geometry in m² (WGS84 ellipsoid).
+
+    Uses pyproj.Geod.geometry_area_perimeter for accurate area computation
+    without the need for reprojection.  The result is always non-negative.
+    """
+    if geom.area == 0:
+        # Non-polygonal geometries (points, lines) have zero planar area; short-
+        # circuit to avoid the artefact where pyproj implicitly closes a
+        # LineString into a ring and returns a spurious non-zero value.
+        return 0.0
+    area, _ = _GEOD.geometry_area_perimeter(geom)
+    return abs(area)
+
+
+def _infer_distance_from_area(area_m2: float, erosion: bool) -> int:
+    """Return a default buffer distance (m) based on geometry area.
+
+    Args:
+        area_m2: Geometry area in square metres.
+        erosion: True for erosion (negative buffer) relations.
+
+    Returns:
+        Distance in metres (negative for erosion).
+    """
+    brackets = _AREA_EROSION_BRACKETS if erosion else _AREA_DISTANCE_BRACKETS
+    default = _AREA_EROSION_DEFAULT if erosion else _AREA_DISTANCE_DEFAULT
+    for threshold, distance in brackets:
+        if area_m2 < threshold:
+            return distance
+    return default
+
+
+def _refine_buffer_config(
+    geom: BaseGeometry,
+    buffer_config: BufferConfig,
+    relation: SpatialRelation,
+) -> BufferConfig:
+    """Replace inferred distance with an area-based estimate.
+
+    Only acts when ``buffer_config.inferred`` is True and no explicit distance
+    was stated by the user (``relation.explicit_distance is None``).  The
+    geometry area drives bracket selection so that tiny features get small
+    buffers and large regions get large ones.
+
+    Returns the (possibly updated) BufferConfig — mutates in place for
+    consistency with the rest of the pipeline.
+    """
+    if not buffer_config.inferred or relation.explicit_distance is not None:
+        return buffer_config
+
+    erosion = buffer_config.distance_m < 0
+    area = _area_m2(geom)
+    buffer_config.distance_m = _infer_distance_from_area(area, erosion)
+    return buffer_config
 
 
 def apply_spatial_relation(
@@ -35,6 +122,11 @@ def apply_spatial_relation(
     features split across multiple datasource records (e.g. a river in segments)
     produce a single coherent search area.
 
+    When ``buffer_config.inferred`` is True (i.e. no explicit distance was
+    stated), the buffer distance is refined from the actual geometry area so
+    that small features receive small buffers and large regions receive large
+    ones.
+
     Args:
         geometry: GeoJSON geometry dict or non-empty list of dicts (WGS84).
         relation: Spatial relation to apply.
@@ -48,14 +140,22 @@ def apply_spatial_relation(
     if isinstance(geometry, list):
         if not geometry:
             raise ValueError("geometry list must not be empty")
-        geometry = mapping(unary_union([shape(g) for g in geometry]))
+        geom = unary_union([shape(g) for g in geometry])
+        geom_dict: dict[str, Any] = mapping(geom)
+    else:
+        geom = shape(geometry)
+        geom_dict = geometry
+
+    # Refine inferred buffer distance from geometry area before dispatching.
+    if buffer_config is not None and buffer_config.inferred:
+        buffer_config = _refine_buffer_config(geom, buffer_config, relation)
 
     if relation.category == "containment":
-        result = _apply_containment(geometry)
+        result = geom_dict
     elif relation.category == "buffer":
         if buffer_config is None:
             raise ValueError(f"Buffer relation '{relation.relation}' requires buffer_config")
-        result = _apply_buffer(geometry, buffer_config)
+        result = _apply_buffer(geom, buffer_config)
     elif relation.category == "directional":
         if buffer_config is None:
             raise ValueError(f"Directional relation '{relation.relation}' requires buffer_config")
@@ -63,31 +163,25 @@ def apply_spatial_relation(
         relation_config = cfg.get_config(relation.relation)
         direction = relation_config.direction_angle_degrees or 0
         sector_angle = relation_config.sector_angle_degrees or 90
-        result = _apply_directional(geometry, buffer_config, direction, sector_angle)
+        result = _apply_directional(geom, buffer_config, direction, sector_angle)
     elif relation.category == "clipping":
         cfg = spatial_config if spatial_config is not None else _DEFAULT_SPATIAL_CONFIG
         relation_config = cfg.get_config(relation.relation)
         clip_direction = relation_config.clip_direction or "north"
-        result = _apply_clipping(geometry, clip_direction)
+        result = _apply_clipping(geom, clip_direction)
     else:
         raise ValueError(f"Unknown relation category: '{relation.category}'")
 
     return convert_geometry(result, geometry_format)
 
 
-def _apply_containment(geometry: dict[str, Any]) -> dict[str, Any]:
-    """Return the geometry unchanged for containment relations."""
-    return geometry
-
-
-def _apply_clipping(geometry: dict[str, Any], clip_direction: str) -> dict[str, Any]:
+def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> dict[str, Any]:
     """
     Clip a geometry to a directional half-plane using its bounding box midpoint.
 
     For example, "northern_part_of Switzerland" clips Switzerland's polygon to its
     northern half — the area above the bbox midpoint latitude.
     """
-    geom = shape(geometry)
     minx, miny, maxx, maxy = geom.bounds
     midx = (minx + maxx) / 2
     midy = (miny + maxy) / 2
@@ -104,12 +198,12 @@ def _apply_clipping(geometry: dict[str, Any], clip_direction: str) -> dict[str, 
     clipped = geom.intersection(clip_box)
 
     if clipped.is_empty:
-        return geometry  # Fallback — should never happen for a valid half-plane clip
+        return mapping(geom)  # Fallback — should never happen for a valid half-plane clip
 
     return mapping(clipped)
 
 
-def _apply_buffer(geometry: dict[str, Any], config: BufferConfig) -> dict[str, Any]:
+def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> dict[str, Any]:
     """
     Apply buffer operation to geometry.
 
@@ -118,29 +212,31 @@ def _apply_buffer(geometry: dict[str, Any], config: BufferConfig) -> dict[str, A
     - Negative buffer (erode): shrinks the geometry inward
     - Ring buffer: excludes the original geometry from the buffer
     - Buffer from center vs boundary
+
+    Projects the geometry to a local azimuthal equidistant CRS so that the
+    buffer distance is in metres (accurate), then reprojects the result back
+    to WGS84.
     """
-    geom = shape(geometry)
-    distance_deg = _meters_to_degrees(config.distance_m, geom.centroid.y)
+    cx, cy = geom.centroid.x, geom.centroid.y
+    to_local, to_wgs84 = _local_transformers(cx, cy)
+
+    geom_local = transform(to_local.transform, geom)
 
     if config.buffer_from == "center":
-        # Buffer from centroid
-        centroid = geom.centroid
-        buffered = centroid.buffer(abs(distance_deg))
+        buffered_local = geom_local.centroid.buffer(abs(config.distance_m))
     elif config.side is not None:
-        # One-sided buffer: symmetric buffer clipped to one side of the line
-        buffered = _one_sided_buffer(geom, abs(distance_deg), config.side)
+        buffered_local = _one_sided_buffer(geom_local, abs(config.distance_m), config.side)
     else:
-        # Buffer from boundary
-        buffered = geom.buffer(distance_deg)
+        buffered_local = geom_local.buffer(config.distance_m)
 
-    # Ring buffer: subtract original geometry
+    # Ring buffer: subtract original geometry (in local CRS)
     if config.ring_only and config.distance_m > 0:
-        buffered = buffered.difference(geom)
+        buffered_local = buffered_local.difference(geom_local)
 
-    if buffered.is_empty:
-        return geometry  # Fallback if erosion eliminates geometry
+    if buffered_local.is_empty:
+        return mapping(geom)  # Fallback if erosion eliminates geometry
 
-    return mapping(buffered)
+    return mapping(transform(to_wgs84.transform, buffered_local))
 
 
 def _collect_line_parts(geom: BaseGeometry) -> list[LineString]:
@@ -168,25 +264,27 @@ def _offset_coords(line: LineString, offset_dist: float) -> list[tuple[float, ..
     return list(offset.coords)
 
 
-def _one_sided_buffer(geom: BaseGeometry, distance_deg: float, side: str) -> BaseGeometry:
+def _one_sided_buffer(geom: BaseGeometry, distance_m: float, side: str) -> BaseGeometry:
     """
     Create a one-sided buffer by clipping a symmetric buffer to one side of a line.
 
-    Uses offset_curve to build a clipping polygon per segment, then intersects each
-    with the segment's buffer and unions the results. This avoids artifacts from
-    Shapely's single_sided=True on sinuous lines with large distances, and correctly
-    handles MultiLineString inputs (e.g. rivers stored as disconnected segments).
+    Operates on a geometry already projected to a local metric CRS so that
+    ``distance_m`` is in metres.  Uses offset_curve to build a clipping polygon
+    per segment, then intersects each with the segment's buffer and unions the
+    results. This avoids artifacts from Shapely's single_sided=True on sinuous
+    lines with large distances, and correctly handles MultiLineString inputs
+    (e.g. rivers stored as disconnected segments).
     """
     # offset_curve: positive = left, negative = right
-    offset_dist = distance_deg if side == "left" else -distance_deg
+    offset_dist = distance_m if side == "left" else -distance_m
 
     parts = _collect_line_parts(geom)
     if not parts:
-        return geom.buffer(distance_deg)
+        return geom.buffer(distance_m)
 
     clipped_parts: list[BaseGeometry] = []
     for part in parts:
-        part_buffer = part.buffer(distance_deg)
+        part_buffer = part.buffer(distance_m)
         off_coords = _offset_coords(part, offset_dist)
 
         if not off_coords:
@@ -202,7 +300,7 @@ def _one_sided_buffer(geom: BaseGeometry, distance_deg: float, side: str) -> Bas
 
 
 def _apply_directional(
-    geometry: dict[str, Any],
+    geom: BaseGeometry,
     config: BufferConfig,
     direction_degrees: float,
     sector_angle_degrees: float,
@@ -213,62 +311,33 @@ def _apply_directional(
     The sector extends outward from the centroid in the given direction.
     Convention: 0° = North, 90° = East, 180° = South, 270° = West (clockwise).
 
+    Arc points are computed geodesically using vectorized ``Geod.fwd`` so the
+    radius is accurate in metres regardless of latitude.
+
     Args:
-        geometry: Reference geometry.
+        geom: Reference geometry (Shapely, WGS84).
         config: Buffer config (distance_m used as sector radius).
         direction_degrees: Center direction of the sector (0=N, 90=E, etc.).
         sector_angle_degrees: Total angular width of the sector.
     """
-    geom = shape(geometry)
-    centroid = geom.centroid
-    cx, cy = centroid.x, centroid.y
+    cx, cy = geom.centroid.x, geom.centroid.y
 
-    radius_deg = _meters_to_degrees(config.distance_m, cy)
-    half_angle = sector_angle_degrees / 2
-
-    # Build sector as a polygon wedge
-    # Start angle and end angle (geographic: 0=N, clockwise)
-    start_angle = direction_degrees - half_angle
-    end_angle = direction_degrees + half_angle
-
-    # Generate arc points
     num_points = 36
-    points = [(cx, cy)]  # Center point
+    half_angle = sector_angle_degrees / 2
+    azimuths = [direction_degrees - half_angle + sector_angle_degrees * i / num_points for i in range(num_points + 1)]
 
-    for i in range(num_points + 1):
-        angle = start_angle + (end_angle - start_angle) * i / num_points
-        # Convert geographic angle to math angle
-        # Geographic: 0=N, 90=E (clockwise)
-        # Math: 0=E, 90=N (counterclockwise)
-        math_angle = math.radians(90 - angle)
-        px = cx + radius_deg * math.cos(math_angle)
-        py = cy + radius_deg * math.sin(math_angle)
-        points.append((px, py))
+    # Vectorized geodesic forward computation: all arc points in one call.
+    lons, lats, _ = _GEOD.fwd(
+        [cx] * (num_points + 1),
+        [cy] * (num_points + 1),
+        azimuths,
+        [config.distance_m] * (num_points + 1),
+    )
 
-    points.append((cx, cy))  # Close the polygon
-
+    points = [(cx, cy), *zip(lons, lats), (cx, cy)]
     sector = Polygon(points)
 
     if sector.is_empty or not sector.is_valid:
         sector = sector.buffer(0)  # Fix invalid geometry
 
     return mapping(sector)
-
-
-def _meters_to_degrees(meters: float, latitude: float) -> float:
-    """
-    Approximate conversion from meters to degrees at a given latitude.
-
-    This is a rough approximation suitable for buffer visualizations.
-    For precise work, use proper projection (e.g., UTM).
-
-    At the equator, 1° ≈ 111,320m. At higher latitudes, longitude degrees shrink.
-    We use the average of lat/lon degree sizes for a reasonable approximation.
-    """
-    # 1 degree latitude ≈ 111,320 meters (relatively constant)
-    meters_per_degree_lat = 111_320
-    # 1 degree longitude varies with latitude
-    meters_per_degree_lon = 111_320 * math.cos(math.radians(latitude))
-    # Average for a circular approximation
-    avg_meters_per_degree = (meters_per_degree_lat + meters_per_degree_lon) / 2
-    return meters / avg_meters_per_degree

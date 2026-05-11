@@ -219,7 +219,7 @@ def _index_keys(name: str) -> list[str]:
     return keys
 
 
-def _to_json_value(val: Any) -> Any:
+def _to_json_value(val: Any) -> str | float | int | bool | None:
     """
     Convert a pandas/numpy value to a JSON-serializable Python primitive.
 
