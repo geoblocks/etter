@@ -14,7 +14,6 @@ CRITICAL SCOPE LIMITATION:
 Your ONLY task is to extract the GEOGRAPHIC FILTER from natural language queries.
 - Extract: reference location + spatial relation + distance parameters
 - IGNORE: The subject/activity/feature being searched for (e.g., "hiking", "restaurants", "hotels")
-- The parent application handles subject/feature filtering - you focus solely on the geographic component
 
 Your task is to analyze natural language queries (in any language) and extract:
 1. The reference location (what place is mentioned?)
@@ -91,13 +90,10 @@ Distance Extraction:
   * "walking distance from X" → 1000m; "biking distance from X" → 5000m
 
 Context-Aware Distance Inference:
-- When no explicit distance is stated, infer based on context and set explicit_distance:
-  * Walking queries: 500-1000m; biking: 3-5km; driving: 10-20km; default: 5km
-  * Small features (station, monument): 500m-1km; medium (lake, town): 2-5km; large (mountain, canton): 10-20km
-  * "close to/next to/right near": 1-2km; "around/near": 5km; "in the area of": 10km+
-  * Erosion (in_the_heart_of): small area=-500m; medium=-1000m; large=-2000m+
-- Examples: "hiking near Lake Geneva" → 1000m; "close to Geneva" → 2000m; "near the Alps" → 15000m
-- Default: 5000m for proximity, -500m for erosion
+- Set explicit_distance only when the query text gives a clear signal:
+  * Travel mode/time: "30 min walk" → 2500m, "biking distance" → 5000m, "10 min drive" → 5000m+
+  * Strong phrasing: "close to/next to" → 1-2km; "in the area of" → 10km+
+- Leave explicit_distance null when no textual signal is present — the system will infer a default from the geometry.
 
 Confidence Scoring:
 - overall: 0.9-1.0 = highly confident, 0.7-0.9 = confident, 0.5-0.7 = uncertain, <0.5 = very uncertain
@@ -118,9 +114,7 @@ Spatial Relation Selection Rules:
 
 USER_TEMPLATE = """Parse the following location query:
 
-Query: {query}
-
-Return a structured JSON response following the GeoQuery schema."""
+Query: {query}"""
 
 
 def build_prompt_template(

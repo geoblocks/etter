@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     # Only for type-checking; not imported at runtime to keep the base package
     # free of SQLAlchemy as a hard dependency.
+    import types
+
     from sqlalchemy import Engine
+    from sqlalchemy.engine import Connection, Row
 
 
 def _normalize_name(name: str) -> str:
@@ -46,7 +49,7 @@ def _normalize_name(name: str) -> str:
     return stripped.lower().strip()
 
 
-def _require_sqlalchemy() -> Any:
+def _require_sqlalchemy() -> types.ModuleType:
     """Import sqlalchemy, raising a clear error if it is not installed."""
     try:
         import sqlalchemy  # noqa: PLC0415
@@ -181,11 +184,11 @@ class PostGISDataSource:
         self._trgm_available: bool | None = None
         self._unaccent_available: bool | None = None
 
-    def _get_connection(self) -> Any:
+    def _get_connection(self) -> Connection:
         """Return a SQLAlchemy connection from the engine."""
         return self._engine.connect()
 
-    def _check_trgm(self, conn: Any) -> bool:
+    def _check_trgm(self, conn: Connection) -> bool:
         """Return True if pg_trgm extension is available in the database."""
         if self._trgm_available is not None:
             return self._trgm_available
@@ -198,7 +201,7 @@ class PostGISDataSource:
             self._trgm_available = False
         return self._trgm_available
 
-    def _check_unaccent(self, conn: Any) -> bool:
+    def _check_unaccent(self, conn: Connection) -> bool:
         """Return True if the unaccent extension is available in the database."""
         if self._unaccent_available is not None:
             return self._unaccent_available
@@ -220,7 +223,7 @@ class PostGISDataSource:
             return None
         return self._raw_to_normalized.get(raw_type, raw_type)
 
-    def _row_to_feature(self, row: Any) -> dict[str, Any]:
+    def _row_to_feature(self, row: Row) -> dict[str, Any]:
         """Convert a SQLAlchemy Row to a GeoJSON Feature dict."""
         feature_id = str(row.id)
         name = str(row.name)
@@ -333,8 +336,8 @@ class PostGISDataSource:
 
     def _search_normalized(
         self,
-        conn: Any,
-        sa: Any,
+        conn: Connection,
+        sa: types.ModuleType,
         cols: str,
         name: str,
         type_filter: list[str] | None,
@@ -369,8 +372,8 @@ class PostGISDataSource:
 
     def _search_ilike(
         self,
-        conn: Any,
-        sa: Any,
+        conn: Connection,
+        sa: types.ModuleType,
         cols: str,
         name: str,
         type_filter: list[str] | None,
@@ -406,8 +409,8 @@ class PostGISDataSource:
 
     def _search_fuzzy(
         self,
-        conn: Any,
-        sa: Any,
+        conn: Connection,
+        sa: types.ModuleType,
         cols: str,
         name: str,
         type_filter: list[str] | None,

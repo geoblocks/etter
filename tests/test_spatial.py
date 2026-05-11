@@ -21,7 +21,7 @@ def test_buffer_positive():
     """Test positive circular buffer."""
     geom = {"type": "Point", "coordinates": [0, 0]}  # Null island
     relation = SpatialRelation(relation="near", category="buffer")
-    config = BufferConfig(distance_m=111320, buffer_from="center")  # ~1 degree at equator
+    config = BufferConfig(distance_m=111320, buffer_from="center", inferred=False)  # ~1 degree at equator
 
     result = apply_spatial_relation(geom, relation, config)
 
@@ -40,7 +40,7 @@ def test_buffer_negative_erosion():
 
     relation = SpatialRelation(relation="in_the_heart_of", category="buffer")
     # Erode by ~0.5 degrees (~55km)
-    config = BufferConfig(distance_m=-55000, buffer_from="boundary")
+    config = BufferConfig(distance_m=-55000, buffer_from="boundary", inferred=False)
 
     result = apply_spatial_relation(geom, relation, config)
 
@@ -62,7 +62,7 @@ def test_ring_buffer():
     poly = Polygon([(-0.5, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5)])
     geom = mapping(poly)
 
-    config = BufferConfig(distance_m=100000, buffer_from="boundary", ring_only=True)
+    config = BufferConfig(distance_m=100000, buffer_from="boundary", ring_only=True, inferred=False)
 
     result = apply_spatial_relation(geom, relation, config)
 
@@ -76,7 +76,7 @@ def test_directional_sector():
     geom = {"type": "Point", "coordinates": [0, 0]}
     relation = SpatialRelation(relation="north_of", category="directional")
     # North sector (0 degrees), 90 degree width
-    config = BufferConfig(distance_m=100000, buffer_from="center")
+    config = BufferConfig(distance_m=100000, buffer_from="center", inferred=False)
 
     # Mocking the spatial config lookup inside apply_spatial_relation requires mocking
     # SpatialRelationConfig. Or we can rely on defaults if we didn't mock it?
@@ -98,7 +98,7 @@ def test_left_side_buffer():
     geom = mapping(line)
 
     relation = SpatialRelation(relation="left_bank", category="buffer")
-    config = BufferConfig(distance_m=111320, buffer_from="boundary", side="left")  # ~1 degree
+    config = BufferConfig(distance_m=111320, buffer_from="boundary", side="left", inferred=False)  # ~1 degree
 
     result = apply_spatial_relation(geom, relation, config)
 
@@ -116,7 +116,7 @@ def test_right_side_buffer():
     geom = mapping(line)
 
     relation = SpatialRelation(relation="right_bank", category="buffer")
-    config = BufferConfig(distance_m=111320, buffer_from="boundary", side="right")  # ~1 degree
+    config = BufferConfig(distance_m=111320, buffer_from="boundary", side="right", inferred=False)  # ~1 degree
 
     result = apply_spatial_relation(geom, relation, config)
 
@@ -156,7 +156,7 @@ def test_side_none_symmetric_buffer():
     geom = mapping(line)
 
     relation = SpatialRelation(relation="along", category="buffer")
-    config = BufferConfig(distance_m=111320, buffer_from="boundary", side=None)  # ~1 degree
+    config = BufferConfig(distance_m=111320, buffer_from="boundary", side=None, inferred=False)  # ~1 degree
 
     result = apply_spatial_relation(geom, relation, config)
 
@@ -176,7 +176,7 @@ def test_list_input_buffer_union():
     seg2 = {"type": "LineString", "coordinates": [[1.0, 0.0], [2.0, 0.0]]}
     full = {"type": "LineString", "coordinates": [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]}
     relation = SpatialRelation(relation="along", category="buffer")
-    config = BufferConfig(distance_m=111320, buffer_from="boundary")
+    config = BufferConfig(distance_m=111320, buffer_from="boundary", inferred=False)
 
     result = shape(apply_spatial_relation([seg1, seg2], relation, config))
     reference = shape(apply_spatial_relation(full, relation, config))
@@ -189,7 +189,7 @@ def test_list_input_single_matches_dict():
     """Single-element list gives the same result as passing the dict directly."""
     geom = {"type": "Point", "coordinates": [0.0, 0.0]}
     relation = SpatialRelation(relation="near", category="buffer")
-    config = BufferConfig(distance_m=111320, buffer_from="center")
+    config = BufferConfig(distance_m=111320, buffer_from="center", inferred=False)
 
     assert shape(apply_spatial_relation(geom, relation, config)).equals_exact(
         shape(apply_spatial_relation([geom], relation, config)), tolerance=1e-10
@@ -201,7 +201,7 @@ def test_list_input_empty_raises():
     import pytest
 
     relation = SpatialRelation(relation="near", category="buffer")
-    config = BufferConfig(distance_m=5000, buffer_from="center")
+    config = BufferConfig(distance_m=5000, buffer_from="center", inferred=False)
     with pytest.raises(ValueError, match="empty"):
         apply_spatial_relation([], relation, config)
 
