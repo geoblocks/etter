@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/geoblocks/etter/compare/v0.3.0...v0.4.0) (2026-05-11)
+
+
+### Features
+
+* add clipping and bordering spatial relations ([#118](https://github.com/geoblocks/etter/issues/118)) ([d2002df](https://github.com/geoblocks/etter/commit/d2002df51385a89b17f882e69c24f89ea7c64c99))
+* area-based distance inference, geodesic spatial ops, type improvements ([#122](https://github.com/geoblocks/etter/issues/122)) ([a5ac40d](https://github.com/geoblocks/etter/commit/a5ac40d489c55ff99199b5f5da63afb568a7512f))
+* union multiple geometries in apply_spatial_relation ([#119](https://github.com/geoblocks/etter/issues/119)) ([ec7525b](https://github.com/geoblocks/etter/commit/ec7525b642c22ec30a40000bc95472712c5c305c))
+
 ## [0.3.0](https://github.com/geoblocks/etter/compare/v0.2.1...v0.3.0) (2026-05-06)
 
 
