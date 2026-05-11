@@ -142,3 +142,54 @@ def test_side_none_symmetric_buffer():
     # Symmetric buffer covers both sides
     assert result_shape.contains(Point(1, 0.5))  # North of line
     assert result_shape.contains(Point(1, -0.5))  # South of line
+
+
+# --- list input (union) tests ---
+
+
+def test_list_input_buffer_union():
+    """Two line segments passed as a list produce the same buffer as the merged line."""
+    seg1 = {"type": "LineString", "coordinates": [[0.0, 0.0], [1.0, 0.0]]}
+    seg2 = {"type": "LineString", "coordinates": [[1.0, 0.0], [2.0, 0.0]]}
+    full = {"type": "LineString", "coordinates": [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]}
+    relation = SpatialRelation(relation="along", category="buffer")
+    config = BufferConfig(distance_m=111320, buffer_from="boundary")
+
+    result = shape(apply_spatial_relation([seg1, seg2], relation, config))
+    reference = shape(apply_spatial_relation(full, relation, config))
+
+    assert not result.is_empty
+    assert abs(result.area - reference.area) / reference.area < 0.01
+
+
+def test_list_input_single_matches_dict():
+    """Single-element list gives the same result as passing the dict directly."""
+    geom = {"type": "Point", "coordinates": [0.0, 0.0]}
+    relation = SpatialRelation(relation="near", category="buffer")
+    config = BufferConfig(distance_m=111320, buffer_from="center")
+
+    assert shape(apply_spatial_relation(geom, relation, config)).equals_exact(
+        shape(apply_spatial_relation([geom], relation, config)), tolerance=1e-10
+    )
+
+
+def test_list_input_empty_raises():
+    """Empty list raises ValueError."""
+    import pytest
+
+    relation = SpatialRelation(relation="near", category="buffer")
+    config = BufferConfig(distance_m=5000, buffer_from="center")
+    with pytest.raises(ValueError, match="empty"):
+        apply_spatial_relation([], relation, config)
+
+
+def test_list_input_containment_union():
+    """Multiple polygons passed as a list are unioned for containment."""
+    poly1 = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+    poly2 = {"type": "Polygon", "coordinates": [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]]}
+    relation = SpatialRelation(relation="in", category="containment")
+
+    result = shape(apply_spatial_relation([poly1, poly2], relation))
+
+    assert result.contains(shape(poly1))
+    assert result.contains(shape(poly2))
