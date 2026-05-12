@@ -2,9 +2,14 @@
 Pydantic models for structured geographic query representation.
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, TypeAlias
 
+from geojson import Feature
 from pydantic import BaseModel, Field, model_validator
+
+GeoJsonGeometry: TypeAlias = dict[str, Any]
+
+__all__ = ["Feature", "GeoJsonGeometry"]
 
 ConfidenceLevel = Annotated[float, Field(ge=0.0, le=1.0, description="Confidence score between 0 and 1")]
 

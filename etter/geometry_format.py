@@ -2,14 +2,12 @@
 Utilities for converting GeoJSON geometry dicts to alternative output formats (WKT, WKB).
 """
 
-from typing import Any
-
 from shapely.geometry import shape
 
-from .models import GeometryFormat
+from .models import Feature, GeoJsonGeometry, GeometryFormat
 
 
-def convert_geometry(geometry: dict[str, Any], fmt: GeometryFormat) -> dict[str, Any] | str:
+def convert_geometry(geometry: GeoJsonGeometry, fmt: GeometryFormat) -> GeoJsonGeometry | str:
     """
     Convert a GeoJSON geometry dict to the requested format.
 
@@ -29,7 +27,7 @@ def convert_geometry(geometry: dict[str, Any], fmt: GeometryFormat) -> dict[str,
     return geom.wkb_hex
 
 
-def convert_feature_geometry(feature: dict[str, Any], fmt: GeometryFormat) -> dict[str, Any]:
+def convert_feature_geometry(feature: Feature, fmt: GeometryFormat) -> Feature | dict:
     """
     Return a copy of a GeoJSON Feature dict with its geometry converted to the requested format.
 
@@ -39,6 +37,7 @@ def convert_feature_geometry(feature: dict[str, Any], fmt: GeometryFormat) -> di
 
     Returns:
         A new dict identical to the input except the "geometry" value is converted.
+        Returns a Feature when fmt is "geojson"; a plain dict otherwise (geometry becomes a string).
     """
     if fmt == "geojson":
         return feature

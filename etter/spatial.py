@@ -6,8 +6,6 @@ All inputs and outputs are GeoJSON dicts in WGS84 (EPSG:4326).
 Shapely is used internally for geometry operations.
 """
 
-from typing import Any
-
 from pyproj import Geod, Transformer
 from shapely.geometry import MultiLineString, box, mapping, shape
 from shapely.geometry.base import BaseGeometry
@@ -16,7 +14,7 @@ from shapely.geometry.polygon import Polygon
 from shapely.ops import linemerge, transform, unary_union
 
 from .geometry_format import convert_geometry
-from .models import BufferConfig, GeometryFormat, SpatialRelation
+from .models import BufferConfig, GeoJsonGeometry, GeometryFormat, SpatialRelation
 from .spatial_config import SpatialRelationConfig
 
 _DEFAULT_SPATIAL_CONFIG = SpatialRelationConfig()  # Module-level singleton for default spatial relation configuration.
@@ -110,12 +108,12 @@ def _refine_buffer_config(
 
 
 def apply_spatial_relation(
-    geometry: dict[str, Any] | list[dict[str, Any]],
+    geometry: GeoJsonGeometry | list[GeoJsonGeometry],
     relation: SpatialRelation,
     buffer_config: BufferConfig | None = None,
     spatial_config: SpatialRelationConfig | None = None,
     geometry_format: GeometryFormat = "geojson",
-) -> dict[str, Any] | str:
+) -> GeoJsonGeometry | str:
     """Transform one or more reference geometries according to a spatial relation.
 
     A list of geometries is unioned into one before the transformation, so that
@@ -141,7 +139,7 @@ def apply_spatial_relation(
         if not geometry:
             raise ValueError("geometry list must not be empty")
         geom = unary_union([shape(g) for g in geometry])
-        geom_dict: dict[str, Any] = mapping(geom)
+        geom_dict: GeoJsonGeometry = mapping(geom)
     else:
         geom = shape(geometry)
         geom_dict = geometry
@@ -175,7 +173,7 @@ def apply_spatial_relation(
     return convert_geometry(result, geometry_format)
 
 
-def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> dict[str, Any]:
+def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> GeoJsonGeometry:
     """
     Clip a geometry to a directional half-plane using its bounding box midpoint.
 
@@ -203,7 +201,7 @@ def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> dict[str, Any]:
     return mapping(clipped)
 
 
-def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> dict[str, Any]:
+def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> GeoJsonGeometry:
     """
     Apply buffer operation to geometry.
 
@@ -304,7 +302,7 @@ def _apply_directional(
     config: BufferConfig,
     direction_degrees: float,
     sector_angle_degrees: float,
-) -> dict[str, Any]:
+) -> GeoJsonGeometry:
     """
     Create a directional sector wedge from the geometry centroid.
 

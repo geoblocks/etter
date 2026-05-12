@@ -5,7 +5,9 @@ Any class implementing this Protocol can be used as a datasource,
 without needing to inherit from a base class (structural typing).
 """
 
-from typing import Any, Protocol
+from typing import Protocol
+
+from geojson import Feature
 
 
 class GeoDataSource(Protocol):
@@ -35,7 +37,7 @@ class GeoDataSource(Protocol):
         name: str,
         type: str | None = None,
         max_results: int = 10,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Feature]:
         """
         Search for geographic features by name.
 
@@ -52,7 +54,7 @@ class GeoDataSource(Protocol):
         """
         ...
 
-    def get_by_id(self, feature_id: str) -> dict[str, Any] | None:
+    def get_by_id(self, feature_id: str) -> Feature | None:
         """
         Get a specific feature by its unique identifier.
 

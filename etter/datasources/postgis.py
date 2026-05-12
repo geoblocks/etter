@@ -29,6 +29,8 @@ import logging
 import unicodedata
 from typing import TYPE_CHECKING, Any
 
+from geojson import Feature
+
 from .location_types import TypeMap, get_matching_types, merge_segments
 
 logger = logging.getLogger(__name__)
@@ -223,7 +225,7 @@ class PostGISDataSource:
             return None
         return self._raw_to_normalized.get(raw_type, raw_type)
 
-    def _row_to_feature(self, row: Row) -> dict[str, Any]:
+    def _row_to_feature(self, row: Row) -> Feature:
         """Convert a SQLAlchemy Row to a GeoJSON Feature dict."""
         feature_id = str(row.id)
         name = str(row.name)
@@ -244,13 +246,7 @@ class PostGISDataSource:
             "confidence": 1.0,
         }
 
-        return {
-            "type": "Feature",
-            "id": feature_id,
-            "geometry": geometry,
-            "bbox": bbox,
-            "properties": properties,
-        }
+        return Feature(geometry=geometry, properties=properties, id=feature_id, bbox=bbox)
 
     def _build_select_columns(self) -> str:
         """Build the SELECT column list as a SQL fragment."""
@@ -266,7 +262,7 @@ class PostGISDataSource:
         name: str,
         type: str | None = None,
         max_results: int = 10,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Feature]:
         """
         Search for geographic features by name.
 
@@ -342,7 +338,7 @@ class PostGISDataSource:
         name: str,
         type_filter: list[str] | None,
         fetch_limit: int,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Feature]:
         """
         Exact accent- and case-insensitive search.
 
@@ -378,7 +374,7 @@ class PostGISDataSource:
         name: str,
         type_filter: list[str] | None,
         fetch_limit: int,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Feature]:
         """Case-insensitive substring fallback using ``ILIKE '%name%'``.
 
         When the ``unaccent`` extension is available, both the stored name column
@@ -415,7 +411,7 @@ class PostGISDataSource:
         name: str,
         type_filter: list[str] | None,
         fetch_limit: int,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Feature]:
         """Fuzzy fallback using pg_trgm similarity (if extension is available)."""
         if not self._check_trgm(conn):
             logger.warning(
@@ -451,7 +447,7 @@ class PostGISDataSource:
             logger.exception("Fuzzy search failed for %r", name)
             return []
 
-    def get_by_id(self, feature_id: str) -> dict[str, Any] | None:
+    def get_by_id(self, feature_id: str) -> Feature | None:
         """
         Get a specific feature by its unique identifier.
 

@@ -33,6 +33,7 @@ from typing import Any, cast
 
 import geopandas as gpd
 import pandas as pd
+from geojson import Feature
 from rapidfuzz import fuzz
 from shapely.geometry import mapping
 
@@ -372,7 +373,7 @@ class IGNBDCartoSource:
                     self._name_index[key] = []
                 self._name_index[key].append(idx)
 
-    def _row_to_feature(self, idx: int) -> dict[str, Any]:
+    def _row_to_feature(self, idx: int) -> Feature:
         """Convert a GeoDataFrame row to a GeoJSON Feature dict (WGS84)."""
         assert self._gdf is not None
         row = self._gdf.iloc[idx]
@@ -402,20 +403,14 @@ class IGNBDCartoSource:
                 if val is not None:
                     properties[col] = val
 
-        return {
-            "type": "Feature",
-            "id": feature_id,
-            "geometry": geometry,
-            "bbox": bbox,
-            "properties": properties,
-        }
+        return Feature(geometry=geometry, properties=properties, id=feature_id, bbox=bbox)
 
     def search(
         self,
         name: str,
         type: str | None = None,
         max_results: int = 10,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Feature]:
         """
         Search for geographic features by name.
 
@@ -470,7 +465,7 @@ class IGNBDCartoSource:
         matches.sort(key=lambda x: x[1], reverse=True)
         return [idx for idx, _ in matches]
 
-    def get_by_id(self, feature_id: str) -> dict[str, Any] | None:
+    def get_by_id(self, feature_id: str) -> Feature | None:
         """
         Get a feature by its ``cleabs`` identifier or row index.
 
