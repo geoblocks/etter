@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/geoblocks/etter/compare/v0.4.0...v0.4.1) (2026-05-12)
+
+
+### Bug Fixes
+
+* address security issue with urllib3 (from 2.6.3 to 2.7.0) ([#123](https://github.com/geoblocks/etter/issues/123)) ([45a4fa0](https://github.com/geoblocks/etter/commit/45a4fa01252fb38fb0c4eb666bdaa2bfce405927))
+
 ## [0.4.0](https://github.com/geoblocks/etter/compare/v0.3.0...v0.4.0) (2026-05-11)
 
 
