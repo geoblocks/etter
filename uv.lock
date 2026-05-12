@@ -459,6 +459,7 @@ name = "etter"
 version = "0.4.1"
 source = { editable = "." }
 dependencies = [
+    { name = "geojson" },
     { name = "geopandas" },
     { name = "langchain" },
     { name = "pydantic" },
@@ -497,6 +498,7 @@ requires-dist = [
     { name = "etter", extras = ["postgis"], marker = "extra == 'dev'" },
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.135" },
     { name = "geoalchemy2", marker = "extra == 'postgis'", specifier = ">=0.15" },
+    { name = "geojson", specifier = ">=3.2" },
     { name = "geopandas", specifier = ">=1.1" },
     { name = "langchain", specifier = ">=1.2" },
     { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=1.1.14" },
@@ -559,6 +561,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f1/3e/8b6b15cd6a68bb4472ad865e8ecc83b010f1673a22834a52fa479cabf639/geoalchemy2-0.19.0.tar.gz", hash = "sha256:c88be59cdb90af9d74278bdd33a5f58acb23859f0f1380726593eed0f343f4a8", size = 240220, upload-time = "2026-04-12T21:02:16.544Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/35/78/0d5918bea58179dc7a6b724c097b3d972f875328460503f74521c46283bc/geoalchemy2-0.19.0-py3-none-any.whl", hash = "sha256:878a5859e23ae632fe20ea35412cda40f50c94fa69c9242587574941e4d4ec32", size = 81145, upload-time = "2026-04-12T21:02:15.337Z" },
+]
+
+[[package]]
+name = "geojson"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/5a/33e761df75c732fcea94aaf01f993d823138581d10c91133da58bc231e63/geojson-3.2.0.tar.gz", hash = "sha256:b860baba1e8c6f71f8f5f6e3949a694daccf40820fa8f138b3f712bd85804903", size = 24574, upload-time = "2024-12-21T19:35:29.835Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/67/a7fa2d650602731c90e0a86279841b4586e14228199e8c09165ba4863e29/geojson-3.2.0-py3-none-any.whl", hash = "sha256:69d14156469e13c79479672eafae7b37e2dcd19bdfd77b53f74fa8fe29910b52", size = 15040, upload-time = "2024-12-21T19:37:02.149Z" },
 ]
 
 [[package]]

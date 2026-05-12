@@ -13,8 +13,9 @@ of type "lake", "river", "pond", etc.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Literal
+from typing import Literal
 
+from geojson import Feature
 from shapely.geometry import mapping, shape
 from shapely.ops import unary_union
 
@@ -349,7 +350,7 @@ MERGE_TYPES: frozenset[str] = frozenset(
 )
 
 
-def merge_segments(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def merge_segments(features: list[Feature]) -> list[Feature]:
     """
     Merge features that share the same (name, type) by unioning their geometries,
     but only for types listed in ``MERGE_TYPES``.
@@ -361,22 +362,27 @@ def merge_segments(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
     excluded because two places with the same name are distinct and must not be
     conflated.
     """
-    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    groups: dict[tuple[str, str], list[Feature]] = defaultdict(list)
     for f in features:
         props = f.get("properties", {})
         key = (str(props.get("name", "")), str(props.get("type", "")))
         groups[key].append(f)
 
-    merged: list[dict[str, Any]] = []
+    merged: list[Feature] = []
     for (_name, ftype), group_features in groups.items():
         if len(group_features) == 1 or ftype not in MERGE_TYPES:
             merged.extend(group_features)
         else:
             geoms = [shape(f["geometry"]) for f in group_features if f.get("geometry") and f["geometry"].get("type")]
             combined = unary_union(geoms)
-            base = dict(group_features[0].items())
-            base["geometry"] = mapping(combined)
+            ref = group_features[0]
             bounds = combined.bounds
-            base["bbox"] = tuple(bounds) if bounds else None
-            merged.append(base)
+            merged.append(
+                Feature(
+                    geometry=mapping(combined),
+                    properties=ref.get("properties", {}),
+                    id=ref.get("id"),
+                    bbox=tuple(bounds) if bounds else None,
+                )
+            )
     return merged

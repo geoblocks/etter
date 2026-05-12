@@ -27,6 +27,7 @@ dependencies = [
     "pyproj>=3.7",
     "geopandas>=1.1",
     "rapidfuzz>=3.14",
+    "geojson>=3.2",
 ]
 
 [project.urls]
@@ -66,7 +67,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["F", "I", "E", "W", "UP", "C4", "ARG"]
