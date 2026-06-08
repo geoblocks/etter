@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/geoblocks/etter/compare/v0.4.1...v0.4.2) (2026-06-05)
+
+
+### Performance Improvements
+
+* optimize geopandas/Shapely usage across datasources and spatial operations ([#143](https://github.com/geoblocks/etter/issues/143)) ([aaf9e9b](https://github.com/geoblocks/etter/commit/aaf9e9bbd5256acb93ab272c17c87256fe5d5776))
+
 ## [0.4.1](https://github.com/geoblocks/etter/compare/v0.4.0...v0.4.1) (2026-05-12)
 
 
