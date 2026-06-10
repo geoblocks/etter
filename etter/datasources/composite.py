@@ -1,8 +1,7 @@
 """
 Composite data source that aggregates results from multiple GeoDataSource instances.
 
-Queries are forwarded to every registered source and results are merged,
-deduplicating by (name, type) while preserving original ordering.
+Queries are forwarded to every registered source and results are merged in order.
 """
 
 from typing import Protocol, runtime_checkable
@@ -70,10 +69,7 @@ class CompositeDataSource:
         merged: list[Feature] = []
 
         for source in self._sources:
-            for feature in source.search(name, type=type, max_results=max_results):
-                merged.append(feature)
-                if len(merged) >= max_results:
-                    return merged
+            merged.extend(source.search(name, type=type, max_results=max_results))
 
         return merged
 
