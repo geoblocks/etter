@@ -127,7 +127,11 @@ class GeoFilterParser:
                 original_error=error,
             )
 
-        assert isinstance(parsed, GeoQuery), "Parsed result must be GeoQuery"
+        if not isinstance(parsed, GeoQuery):
+            raise ParsingError(
+                message=f"Expected GeoQuery, got {type(parsed).__name__}",
+                raw_response=str(parsed),
+            )
         return parsed
 
     def _finalize(self, geo_query: GeoQuery, query: str) -> GeoQuery:
