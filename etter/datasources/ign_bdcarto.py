@@ -34,10 +34,9 @@ from typing import Any, cast
 import geopandas as gpd
 import pandas as pd
 from geojson import Feature
-from rapidfuzz import fuzz
 from shapely.geometry import mapping
 
-from .location_types import TypeMap, get_matching_types, merge_segments
+from .location_types import TypeMap, fuzzy_search_index, get_matching_types, merge_segments
 
 logger = logging.getLogger(__name__)
 
@@ -460,20 +459,7 @@ class IGNBDCartoSource:
         return features[:max_results]
 
     def _fuzzy_search(self, normalized: str, threshold: float = 75.0) -> list[int]:
-        """Fuzzy search using a token inverted index for fast candidate pre-filtering."""
-        candidates: set[str] = set()
-        for token in normalized.split():
-            candidates |= self._token_index.get(token, set())
-
-        matches: list[tuple[int, float]] = []
-        for name in candidates:
-            score = fuzz.token_set_ratio(normalized, name)
-            if score >= threshold:
-                for idx in self._name_index[name]:
-                    matches.append((idx, score))
-
-        matches.sort(key=lambda x: x[1], reverse=True)
-        return [idx for idx, _ in matches]
+        return fuzzy_search_index(normalized, self._token_index, self._name_index, threshold)
 
     def get_by_id(self, feature_id: str) -> Feature | None:
         """

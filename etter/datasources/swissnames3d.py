@@ -14,11 +14,10 @@ from typing import Any
 import geopandas as gpd
 import pandas as pd
 from geojson import Feature
-from rapidfuzz import fuzz
 from shapely import force_2d
 from shapely.geometry import mapping
 
-from .location_types import TypeMap, get_matching_types
+from .location_types import TypeMap, fuzzy_search_index, get_matching_types
 
 # Map normalized, grouped types to their OBJEKTART values.
 # Each type groups related OBJEKTART values (e.g., lake groups: See, Seeteil).
@@ -381,26 +380,7 @@ class SwissNames3DSource:
         return features[:max_results]
 
     def _fuzzy_search(self, normalized: str, threshold: float = 75.0) -> list[int]:
-        """
-        Fuzzy search using a token inverted index for fast candidate pre-filtering.
-
-        Looks up each query token in _token_index to find only the indexed names
-        that share at least one token, then scores those candidates with
-        token_set_ratio. Misses (no shared tokens) return instantly at O(1).
-        """
-        candidates: set[str] = set()
-        for token in normalized.split():
-            candidates |= self._token_index.get(token, set())
-
-        matches: list[tuple[int, float]] = []
-        for name in candidates:
-            score = fuzz.token_set_ratio(normalized, name)
-            if score >= threshold:
-                for idx in self._name_index[name]:
-                    matches.append((idx, score))
-
-        matches.sort(key=lambda x: x[1], reverse=True)
-        return [idx for idx, _ in matches]
+        return fuzzy_search_index(normalized, self._token_index, self._name_index, threshold)
 
     def get_by_id(self, feature_id: str) -> Feature | None:
         """
