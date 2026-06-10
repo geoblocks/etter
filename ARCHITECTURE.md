@@ -345,6 +345,7 @@ demo/
 ├── main.py                # FastAPI demo server (file-based or PostGIS mode)
 ├── Dockerfile             # Image for the FastAPI service
 ├── docker-compose.yml     # PostGIS demo stack (see below)
+├── etter-mcp-app/         # MCP client demo application
 └── static/                # OpenLayers map UI
 
 scripts/
@@ -447,8 +448,6 @@ source = PostGISDataSource(
 )
 results = source.search("Lausanne", type="city")
 ```
-
----
 
 ---
 
