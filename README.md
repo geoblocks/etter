@@ -141,7 +141,7 @@ config.register_relation(RelationConfig(
     buffer_from="center"
 ))
 
-parser = GeoFilterParser(spatial_config=config)
+parser = GeoFilterParser(llm=llm, spatial_config=config)
 ```
 
 ## API Reference
@@ -195,6 +195,11 @@ Structured output model representing the parsed geographic filter.
 - `along`: 500m buffer for linear features
 - `left_bank`, `right_bank`: Buffer on one side of a linear feature (river, road) relative to its flow direction
 - `in_the_heart_of`: Erosion for central areas (default -500m, LLM infers based on area size)
+- `bordering`: 2km ring outside the reference boundary, for land-border adjacency queries (e.g. "cities bordering Germany")
+
+### Clipping
+
+- `northern_part_of`, `southern_part_of`, `eastern_part_of`, `western_part_of`: Clips the reference geometry to the corresponding directional half (bbox intersection)
 
 ### Directional
 
