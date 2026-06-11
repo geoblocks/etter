@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.3](https://github.com/geoblocks/etter/compare/v0.4.2...v0.4.3) (2026-06-11)
+
+
+### Bug Fixes
+
+* **composite:** align behavior with documented per-source max_results ([#162](https://github.com/geoblocks/etter/issues/162)) ([16e46fd](https://github.com/geoblocks/etter/commit/16e46fda81f10bb19eabb14033a7bdaa9e3692dd))
+* raise ParsingError instead of assert for GeoQuery type check ([#161](https://github.com/geoblocks/etter/issues/161)) ([f314206](https://github.com/geoblocks/etter/commit/f314206f3a6a25ce0f2f9a6c7edd7680debdbe56))
+
+
+### Documentation
+
+* fix documentation drift ([#160](https://github.com/geoblocks/etter/issues/160)) ([63e7f1e](https://github.com/geoblocks/etter/commit/63e7f1ea74ee3bc88e7f9890d4ba8d93cd3d21b9))
+
 ## [0.4.2](https://github.com/geoblocks/etter/compare/v0.4.1...v0.4.2) (2026-06-05)
 
 
