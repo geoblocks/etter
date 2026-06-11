@@ -16,6 +16,7 @@ from collections import defaultdict
 from typing import Literal
 
 from geojson import Feature
+from rapidfuzz import fuzz
 from shapely.geometry import mapping, shape
 from shapely.ops import unary_union
 
@@ -386,3 +387,40 @@ def merge_segments(features: list[Feature]) -> list[Feature]:
                 )
             )
     return merged
+
+
+def fuzzy_search_index(
+    normalized: str,
+    token_index: dict[str, set[str]],
+    name_index: dict[str, list[int]],
+    threshold: float = 75.0,
+) -> list[int]:
+    """
+    Fuzzy search over a token-inverted index.
+
+    Uses token_sort_ratio so that single-token candidates do not score 100%
+    against multi-token queries (avoids the subset-match inflation of
+    token_set_ratio).
+
+    Args:
+        normalized: Already-normalized query string.
+        token_index: Maps each token to the set of indexed name keys that contain it.
+        name_index: Maps each indexed name key to its list of row indices.
+        threshold: Minimum score (0–100) to include a candidate.
+
+    Returns:
+        Row indices sorted by descending score.
+    """
+    candidates: set[str] = set()
+    for token in normalized.split():
+        candidates |= token_index.get(token, set())
+
+    matches: list[tuple[int, float]] = []
+    for name in candidates:
+        score = fuzz.token_sort_ratio(normalized, name)
+        if score >= threshold:
+            for idx in name_index[name]:
+                matches.append((idx, score))
+
+    matches.sort(key=lambda x: x[1], reverse=True)
+    return [idx for idx, _ in matches]
