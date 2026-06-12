@@ -15,7 +15,7 @@
     "@types/express": "^5.0.6",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vite": "^8.0.16",
     "vite-plugin-singlefile": "^2.3.3"
