@@ -1,0 +1,108 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::2056" }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "UUID": "uuid-canton-bern",
+        "NAME": "Bern",
+        "OBJEKTART": "Kanton",
+        "FLAECHE": 5959
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2550000.0, 1150000.0],
+            [2650000.0, 1150000.0],
+            [2650000.0, 1250000.0],
+            [2550000.0, 1150000.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "UUID": "uuid-canton-zuerich",
+        "NAME": "Zürich",
+        "OBJEKTART": "Kanton",
+        "FLAECHE": 1729
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2660000.0, 1220000.0],
+            [2710000.0, 1220000.0],
+            [2710000.0, 1270000.0],
+            [2660000.0, 1220000.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "UUID": "uuid-municipality-thun",
+        "NAME": "Thun",
+        "OBJEKTART": "Gemeindegebiet",
+        "BEZIRK": "Thun"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2605000.0, 1170000.0],
+            [2620000.0, 1170000.0],
+            [2620000.0, 1185000.0],
+            [2605000.0, 1170000.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "UUID": "uuid-municipality-zuerich",
+        "NAME": "Zürich",
+        "OBJEKTART": "Gemeindegebiet",
+        "BEZIRK": "Zürich"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2680000.0, 1243000.0],
+            [2690000.0, 1243000.0],
+            [2690000.0, 1253000.0],
+            [2680000.0, 1243000.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "UUID": "uuid-district-bern",
+        "NAME": "Bern",
+        "OBJEKTART": "Bezirk"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2570000.0, 1180000.0],
+            [2630000.0, 1180000.0],
+            [2630000.0, 1230000.0],
+            [2570000.0, 1180000.0]
+          ]
+        ]
+      }
+    }
+  ]
+}

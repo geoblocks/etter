@@ -120,6 +120,11 @@ Resolves location names to geometries.
     - Type filtering with fuzzy matching (lake, city, canton, etc.)
     - Coordinate conversion (CH1903+ → WGS84)
     - ~80 grouped geographic types
+  - `SwissBoundaries3DSource`: Wraps swisstopo swissBOUNDARIES3D data (Shapefile). Handles:
+    - Administrative boundaries (cantons, municipalities, districts)
+    - Automatic concatenation of 3 boundary shapefiles from a directory
+    - Coordinate conversion (CH1903+ → WGS84)
+    - 3D → 2D geometry downgrading
   - `IGNBDCartoSource`: Wraps IGN BD-CARTO data (GeoPackage). Handles:
     - 14 thematic layers (administrative, hydrography, named places, protected areas)
     - French article stripping for name normalization
@@ -335,6 +340,7 @@ etter/
 │   ├── protocol.py        # GeoDataSource Protocol
 │   ├── location_types.py  # Type hierarchy & fuzzy matching
 │   ├── swissnames3d.py    # SwissNames3D Implementation (Shapefile)
+│   ├── swissboundaries3d.py # SwissBoundaries3D Implementation (Shapefile)
 │   ├── ign_bdcarto.py     # IGN BD-CARTO Implementation (GeoPackage)
 │   ├── postgis.py         # PostGISDataSource (generic DB-backed)
 │   └── composite.py       # Fan-out aggregator

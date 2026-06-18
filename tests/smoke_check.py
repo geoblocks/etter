@@ -107,6 +107,7 @@ def _import_top_level():
         "LowConfidenceWarning",
         "GeoDataSource",
         "SwissNames3DSource",
+        "SwissBoundaries3DSource",
         "IGNBDCartoSource",
         "CompositeDataSource",
         "PostGISDataSource",
@@ -132,6 +133,7 @@ check("etter.datasources", lambda: __import__("etter.datasources"))
 check("etter.datasources.protocol", lambda: __import__("etter.datasources.protocol"))
 check("etter.datasources.composite", lambda: __import__("etter.datasources.composite"))
 check("etter.datasources.swissnames3d", lambda: __import__("etter.datasources.swissnames3d"))
+check("etter.datasources.swissboundaries3d", lambda: __import__("etter.datasources.swissboundaries3d"))
 check("etter.datasources.ign_bdcarto", lambda: __import__("etter.datasources.ign_bdcarto"))
 check("etter.datasources.postgis", lambda: __import__("etter.datasources.postgis"))
 check("etter.datasources.location_types", lambda: __import__("etter.datasources.location_types"))
