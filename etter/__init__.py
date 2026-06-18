@@ -14,7 +14,14 @@ except PackageNotFoundError:  # running from source without install
 # Main API
 # Exceptions
 # Datasources
-from .datasources import CompositeDataSource, GeoDataSource, IGNBDCartoSource, PostGISDataSource, SwissNames3DSource
+from .datasources import (
+    CompositeDataSource,
+    GeoDataSource,
+    IGNBDCartoSource,
+    PostGISDataSource,
+    SwissBoundaries3DSource,
+    SwissNames3DSource,
+)
 from .exceptions import (
     GeoFilterError,
     LowConfidenceError,
@@ -69,6 +76,7 @@ __all__ = [
     # Datasources
     "GeoDataSource",
     "SwissNames3DSource",
+    "SwissBoundaries3DSource",
     "IGNBDCartoSource",
     "CompositeDataSource",
     "PostGISDataSource",
