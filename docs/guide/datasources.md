@@ -17,6 +17,19 @@ results = source.search("Lausanne", type="settlement", max_results=5)
 
 Handles EPSG:2056 → WGS84 reprojection and fuzzy name matching automatically. Data is loaded lazily on first use.
 
+## SwissBoundaries3D
+
+Wraps the [swisstopo swissBOUNDARIES3D](https://www.swisstopo.admin.ch/en/landscape-model-swissboundaries3d) dataset (Shapefile). Covers Swiss administrative boundaries: cantons, municipalities, and districts.
+
+```python
+from etter.datasources import SwissBoundaries3DSource
+
+source = SwissBoundaries3DSource("data/swissboundaries3d/")
+results = source.search("Bern", type="canton")
+```
+
+If given a directory, automatically loads and concatenates all three boundary shapefiles (BEZIRKSGEBIET, HOHEITSGEBIET, KANTONSGEBIET). Handles EPSG:2056 → WGS84 reprojection and drops 3D coordinates. Data is loaded lazily on first use.
+
 ## IGN BD-CARTO
 
 Wraps the [IGN BD-CARTO](https://geoservices.ign.fr/bdcarto) GeoPackage for France. Covers 14 thematic layers (administrative boundaries, hydrography, named places, protected areas, etc.).
@@ -80,10 +93,11 @@ See [`PostGISDataSource`](../api/etter.html#PostGISDataSource) for the full cons
 Fan-out across multiple datasources. Sources are queried in order and results are accumulated until `max_results` is reached:
 
 ```python
-from etter.datasources import CompositeDataSource, SwissNames3DSource, IGNBDCartoSource
+from etter.datasources import CompositeDataSource, SwissNames3DSource, SwissBoundaries3DSource, IGNBDCartoSource
 
 source = CompositeDataSource(
     SwissNames3DSource("data/swissnames3d/"),
+    SwissBoundaries3DSource("data/swissboundaries3d/"),
     IGNBDCartoSource("data/bdcarto/"),
 )
 results = source.search("Geneva", type="settlement")
