@@ -38,6 +38,11 @@ BDCARTO_ARCHIVE = data/bdcarto.7z
 BDCARTO_DIR = data/bdcarto
 DATA_PKT_IGN = $(BDCARTO_DIR)/commune.gpkg
 
+SWISSBOUNDARIES_DIR = data/swissboundaries
+SWISSBOUNDARIES_URL = https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/swissboundaries3d_2026-01/swissboundaries3d_2026-01_2056_5728.shp.zip
+SWISSBOUNDARIES_ARCHIVE = data/swissboundaries3d_2026-01_2056_5728.shp.zip
+DATA_PKT_SWISSBOUNDARIES = $(SWISSBOUNDARIES_DIR)/swissBOUNDARIES3D_1_5_TLM_HOHEITSGEBIET.shp
+
 repl:
 	uv run python repl.py
 
@@ -51,6 +56,8 @@ download-data: $(DATA_PKT)
 
 download-data-ign: $(DATA_PKT_IGN)
 
+download-data-swissboundaries: $(DATA_PKT_SWISSBOUNDARIES)
+
 $(DATA_PKT):
 	mkdir -p data
 	curl -L https://data.geo.admin.ch/ch.swisstopo.swissnames3d/swissnames3d_2025/swissnames3d_2025_2056.shp.zip -o data/swissnames3d.zip
@@ -62,6 +69,12 @@ $(DATA_PKT_IGN):
 	curl -L $(BDCARTO_URL) -o $(BDCARTO_ARCHIVE)
 	bash scripts/extract_bdcarto.sh $(BDCARTO_ARCHIVE) $(BDCARTO_DIR)
 	rm $(BDCARTO_ARCHIVE)
+
+$(DATA_PKT_SWISSBOUNDARIES):
+	mkdir -p $(SWISSBOUNDARIES_DIR)
+	curl -L $(SWISSBOUNDARIES_URL) -o $(SWISSBOUNDARIES_ARCHIVE)
+	unzip -o $(SWISSBOUNDARIES_ARCHIVE) -d $(SWISSBOUNDARIES_DIR)
+	rm $(SWISSBOUNDARIES_ARCHIVE)
 
 docs-preview:
 	uv run pdoc etter --docformat google -t docs/pdoc-templates -o docs/public/api/
