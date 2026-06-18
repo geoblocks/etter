@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/geoblocks/etter/compare/v0.4.3...v0.5.0) (2026-06-18)
+
+
+### Features
+
+* add swissboundaries3d ([#176](https://github.com/geoblocks/etter/issues/176)) ([e8ac572](https://github.com/geoblocks/etter/commit/e8ac57296d3761157ce029d9ff6b606876ddcd59))
+
 ## [0.4.3](https://github.com/geoblocks/etter/compare/v0.4.2...v0.4.3) (2026-06-11)
 
 
