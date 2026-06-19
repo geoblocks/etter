@@ -21,8 +21,8 @@ features:
     details: etter extracts spatial relationships from queries and ignores everything else. Feature and activity identification is your application's job.
   - title: Multilingual
     details: Parse queries in English, French, German, Italian and more. The LLM handles language — you handle the map.
-  - title: 15 Spatial Relations
-    details: Containment, buffer, ring, one-sided bank, erosion, and 8 directional sectors — all with sensible defaults and full override support.
+  - title: Spatial Relations
+    details: Containment, buffer, ring, one-sided bank, erosion, 8 directional sectors and much more — all with sensible defaults and full override support.
   - title: Streaming Support
     details: Real-time reasoning events let you build responsive UIs that show progress as the query is being parsed.
   - title: LLM Agnostic
