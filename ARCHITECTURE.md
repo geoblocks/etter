@@ -199,7 +199,7 @@ Standard GeoJSON dictionary structure:
 | Category (`category=`) | Relations | Behavior |
 |------------------------|-----------|----------|
 | **`containment`** | `in` | Exact geometry match |
-| **`buffer`** | `near`, `along` | Circular/Linear buffer; distance inferred from geometry area when not explicit |
+| **`buffer`** | `near`, `around`, `along` | Circular/Linear buffer; distance inferred from geometry area when not explicit |
 | **`buffer`** (one-sided) | `left_bank`, `right_bank` | Buffer on one side of a linear feature relative to flow direction |
 | **`buffer`** (ring) | `on_shores_of`, `bordering` | Buffer - Original (Donut); distance inferred from geometry area when not explicit |
 | **`buffer`** (erosion) | `in_the_heart_of` | Negative buffer (shrink); erosion depth inferred from geometry area when not explicit |
