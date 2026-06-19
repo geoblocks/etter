@@ -17,6 +17,19 @@ def test_containment_passthrough():
     assert result == geom
 
 
+def test_around_buffer():
+    """Test around relation produces a circular buffer from center."""
+    geom = {"type": "Point", "coordinates": [0, 0]}
+    relation = SpatialRelation(relation="around", category="buffer")
+    config = BufferConfig(distance_m=111320, buffer_from="center", inferred=False)
+
+    result = apply_spatial_relation(geom, relation, config)
+
+    assert result["type"] == "Polygon"
+    result_shape = shape(result)
+    assert result_shape.contains(Point(0, 0))
+
+
 def test_buffer_positive():
     """Test positive circular buffer."""
     geom = {"type": "Point", "coordinates": [0, 0]}  # Null island

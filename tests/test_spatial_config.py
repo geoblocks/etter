@@ -16,6 +16,7 @@ def test_default_relations_loaded():
     assert config.has_relation("in")
 
     # Check buffer relations
+    assert config.has_relation("around")
     assert config.has_relation("near")
     assert config.has_relation("on_shores_of")
     assert config.has_relation("along")
@@ -42,6 +43,17 @@ def test_get_config():
     assert near_config.name == "near"
     assert near_config.category == "buffer"
     assert near_config.default_distance_m == 5000
+
+
+def test_around_config():
+    """Test around relation configuration."""
+    config = SpatialRelationConfig()
+    around = config.get_config("around")
+    assert around.name == "around"
+    assert around.category == "buffer"
+    assert around.default_distance_m == 1000
+    assert around.buffer_from == "center"
+    assert around.ring_only is False
 
 
 def test_get_unknown_relation():
