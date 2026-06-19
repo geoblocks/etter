@@ -64,6 +64,16 @@ class SpatialRelationConfig:
         # ===== BUFFER/PROXIMITY RELATIONS =====
         self.register_relation(
             RelationConfig(
+                name="around",
+                category="buffer",
+                description="Proximity search around a point with default 1km radius",
+                default_distance_m=1000,
+                buffer_from="center",
+            )
+        )
+
+        self.register_relation(
+            RelationConfig(
                 name="near",
                 category="buffer",
                 description="Proximity search with default 5km radius",
