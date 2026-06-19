@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/geoblocks/etter/compare/v0.5.0...v0.6.0) (2026-06-19)
+
+
+### Features
+
+* add "around" spatial relation ([#178](https://github.com/geoblocks/etter/issues/178)) ([13bbde1](https://github.com/geoblocks/etter/commit/13bbde18f6a6ccdb64198d9f3825287c1f80da5c))
+
 ## [0.5.0](https://github.com/geoblocks/etter/compare/v0.4.3...v0.5.0) (2026-06-18)
 
 
