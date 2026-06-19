@@ -1,6 +1,6 @@
 # Spatial Relations
 
-etter supports 20 built-in spatial relations across four categories.
+etter supports 21 built-in spatial relations across four categories.
 
 ## Containment
 
@@ -14,6 +14,7 @@ etter supports 20 built-in spatial relations across four categories.
 
 | Relation | Behavior | Default distance |
 |----------|----------|-----------------|
+| `around` | Circular buffer from centroid | 1 km |
 | `near` | Circular buffer from centroid | 5 km |
 | `along` | Linear buffer along a feature | 500 m |
 | `left_bank` | Left bank of a linear feature (relative to flow direction) | 500 m |

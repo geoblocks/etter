@@ -107,6 +107,28 @@ EXAMPLES: list[ExampleQuery] = [
             ),
         ),
     ),
+    # Around relation (English)
+    ExampleQuery(
+        input="around Montreux",
+        language="en",
+        description="Proximity buffer - 1km radius around reference point",
+        output=GeoQuery(
+            query_type="simple",
+            spatial_relation=SpatialRelation(relation="around", category="buffer", explicit_distance=None),
+            reference_location=ReferenceLocation(
+                name="Montreux",
+                type="city",
+                type_confidence=0.95,
+            ),
+            buffer_config=BufferConfig(distance_m=1000, buffer_from="center", ring_only=False, inferred=True),
+            confidence_breakdown=ConfidenceScore(
+                overall=0.95,
+                location_confidence=0.95,
+                relation_confidence=0.95,
+                reasoning=None,
+            ),
+        ),
+    ),
     # Directional (English)
     ExampleQuery(
         input="hiking north of Bern",
