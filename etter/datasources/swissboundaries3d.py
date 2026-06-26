@@ -17,7 +17,7 @@ from geojson import Feature
 from shapely import force_2d
 from shapely.geometry import mapping
 
-from .location_types import TypeMap, fuzzy_search_index, get_matching_types
+from .location_types import TypeMap, fuzzy_search_index, get_matching_types, to_serializable
 
 # Map normalized, grouped types to their OBJEKTART values.
 # Each type groups related OBJEKTART values (e.g., lake groups: See, Seeteil).
@@ -242,8 +242,8 @@ class SwissBoundaries3DSource:
             "confidence": 1.0,
         }
         for col in self._extra_cols:
-            val = row.get(col)
-            if val is not None and str(val) != "nan":
+            val = to_serializable(row.get(col))
+            if val is not None:
                 properties[col] = val
 
         return Feature(geometry=geometry, properties=properties, id=feature_id, bbox=bbox)

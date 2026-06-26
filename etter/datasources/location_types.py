@@ -13,8 +13,9 @@ of type "lake", "river", "pond", etc.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Literal
+from typing import Any, Literal
 
+import pandas as pd
 from geojson import Feature
 from rapidfuzz import fuzz
 from shapely.geometry import mapping, shape
@@ -315,6 +316,26 @@ def get_matching_types(type_hint: str) -> list[str]:
 
     # Unknown type - return empty (no match)
     return []
+
+
+def to_serializable(val: Any) -> str | int | float | bool | None:
+    """Convert a pandas/numpy value to a JSON-serializable Python primitive.
+
+    Returns None for missing values (NaN, NaT, None) so callers can omit them
+    from feature properties.
+    """
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    if hasattr(val, "item"):
+        return val.item()
+    return val
 
 
 # Segment merging
