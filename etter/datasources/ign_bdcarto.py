@@ -36,7 +36,7 @@ import pandas as pd
 from geojson import Feature
 from shapely.geometry import mapping
 
-from .location_types import TypeMap, fuzzy_search_index, get_matching_types, merge_segments
+from .location_types import TypeMap, fuzzy_search_index, get_matching_types, merge_segments, to_serializable
 
 logger = logging.getLogger(__name__)
 
@@ -219,27 +219,6 @@ def _index_keys(name: str) -> list[str]:
     return keys
 
 
-def _to_json_value(val: Any) -> str | float | int | bool | None:
-    """
-    Convert a pandas/numpy value to a JSON-serializable Python primitive.
-
-    Returns ``None`` for missing values (NaN, NaT, None) so they are omitted
-    from the feature properties.
-    """
-    if val is None:
-        return None
-    try:
-        if pd.isna(val):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if isinstance(val, pd.Timestamp):
-        return val.isoformat()
-    if hasattr(val, "item"):
-        return val.item()
-    return val
-
-
 def _assign_type_col(gdf: gpd.GeoDataFrame, cfg: dict[str, Any]) -> None:
     """Assign the _TYPE_COL column using vectorized operations."""
     if cfg.get("commune_flags"):
@@ -407,7 +386,7 @@ class IGNBDCartoSource:
         }
         for col in self._gdf.columns:
             if col not in skip_cols:
-                val = _to_json_value(row.get(col))
+                val = to_serializable(row.get(col))
                 if val is not None:
                     properties[col] = val
 
