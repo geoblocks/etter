@@ -45,7 +45,7 @@ jobs:
           cp demo/.env.example demo/.env
       - name: Cache data
         id: cache-data
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: data/
           key: data-swissnames3d-2025-bdcarto-2025-09-15
