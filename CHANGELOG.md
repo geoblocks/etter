@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/geoblocks/etter/compare/v0.7.0...v0.7.1) (2026-08-19)
+
+
+### Documentation
+
+* drop redundant model_provider from init_chat_model docstring examples ([#261](https://github.com/geoblocks/etter/issues/261)) ([5a75a59](https://github.com/geoblocks/etter/commit/5a75a596482ca0f818c1f9bae0eca9b65ad107be))
+
 ## [0.7.0](https://github.com/geoblocks/etter/compare/v0.6.0...v0.7.0) (2026-07-24)
 
 
