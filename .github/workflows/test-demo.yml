@@ -43,18 +43,24 @@ jobs:
       - name: Set up env
         run: |
           cp demo/.env.example demo/.env
-      - name: Cache data
+      - name: Restore data cache
         id: cache-data
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: data/
           key: data-swissnames3d-2025-bdcarto-2025-09-15
-          save-always: true
       - name: Download data
+        id: download-data
         if: steps.cache-data.outputs.cache-hit != 'true'
         run: |
           make download-data
           make download-data-ign
+      - name: Save data cache
+        if: steps.download-data.outcome == 'success' && steps.cache-data.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: data/
+          key: data-swissnames3d-2025-bdcarto-2025-09-15
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Build and run demo composition
