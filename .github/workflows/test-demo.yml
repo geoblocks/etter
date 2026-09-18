@@ -49,6 +49,7 @@ jobs:
         with:
           path: data/
           key: data-swissnames3d-2025-bdcarto-2025-09-15
+          save-always: true
       - name: Download data
         if: steps.cache-data.outputs.cache-hit != 'true'
         run: |
