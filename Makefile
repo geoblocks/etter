@@ -58,21 +58,23 @@ download-data-ign: $(DATA_PKT_IGN)
 
 download-data-swissboundaries: $(DATA_PKT_SWISSBOUNDARIES)
 
+CURL = curl -L --retry 5 --retry-delay 10 --retry-all-errors --continue-at -
+
 $(DATA_PKT):
 	mkdir -p data
-	curl -L https://data.geo.admin.ch/ch.swisstopo.swissnames3d/swissnames3d_2025/swissnames3d_2025_2056.shp.zip -o data/swissnames3d.zip
+	$(CURL) https://data.geo.admin.ch/ch.swisstopo.swissnames3d/swissnames3d_2025/swissnames3d_2025_2056.shp.zip -o data/swissnames3d.zip
 	unzip -o data/swissnames3d.zip -d data/
 	rm data/swissnames3d.zip
 
 $(DATA_PKT_IGN):
 	mkdir -p $(BDCARTO_DIR)
-	curl -L $(BDCARTO_URL) -o $(BDCARTO_ARCHIVE)
+	$(CURL) $(BDCARTO_URL) -o $(BDCARTO_ARCHIVE)
 	bash scripts/extract_bdcarto.sh $(BDCARTO_ARCHIVE) $(BDCARTO_DIR)
 	rm $(BDCARTO_ARCHIVE)
 
 $(DATA_PKT_SWISSBOUNDARIES):
 	mkdir -p $(SWISSBOUNDARIES_DIR)
-	curl -L $(SWISSBOUNDARIES_URL) -o $(SWISSBOUNDARIES_ARCHIVE)
+	$(CURL) $(SWISSBOUNDARIES_URL) -o $(SWISSBOUNDARIES_ARCHIVE)
 	unzip -o $(SWISSBOUNDARIES_ARCHIVE) -d $(SWISSBOUNDARIES_DIR)
 	rm $(SWISSBOUNDARIES_ARCHIVE)
 
