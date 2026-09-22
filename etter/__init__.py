@@ -24,6 +24,7 @@ from .datasources import (
 )
 from .exceptions import (
     GeoFilterError,
+    LLMInvocationError,
     LowConfidenceError,
     LowConfidenceWarning,
     NoReferenceLocationError,
@@ -78,6 +79,7 @@ __all__ = [
     # Exceptions
     "GeoFilterError",
     "ParsingError",
+    "LLMInvocationError",
     "ValidationError",
     "NoReferenceLocationError",
     "UnknownRelationError",

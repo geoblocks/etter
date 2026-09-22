@@ -26,6 +26,10 @@ class ParsingError(GeoFilterError):
         super().__init__(message)
 
 
+class LLMInvocationError(ParsingError):
+    """The LLM call itself failed (network, rate limit, provider error) before any output was produced."""
+
+
 class ValidationError(GeoFilterError):
     """Structured output is valid but fails business logic validation."""
 

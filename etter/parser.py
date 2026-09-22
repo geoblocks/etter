@@ -8,7 +8,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 
 from .datasources.protocol import GeoDataSource
-from .exceptions import ParsingError
+from .exceptions import LLMInvocationError, ParsingError
 from .models import GeoQuery, RelationCategory
 from .prompts import build_geo_prompt_template
 from .spatial_config import SpatialRelationConfig
@@ -203,7 +203,7 @@ class GeoFilterParser:
         try:
             response = self.structured_llm.invoke(formatted_messages)
         except Exception as e:
-            raise ParsingError(
+            raise LLMInvocationError(
                 message=f"LLM invocation failed: {str(e)}",
                 raw_response="",
                 original_error=e,
@@ -224,7 +224,7 @@ class GeoFilterParser:
         try:
             response = await self.structured_llm.ainvoke(formatted_messages)
         except Exception as e:
-            raise ParsingError(
+            raise LLMInvocationError(
                 message=f"LLM invocation failed: {str(e)}",
                 raw_response="",
                 original_error=e,
@@ -292,7 +292,7 @@ class GeoFilterParser:
                 response = await self.structured_llm.ainvoke(formatted_messages)
             except Exception as e:
                 yield {"type": "error", "content": f"LLM invocation failed: {str(e)}"}
-                raise ParsingError(
+                raise LLMInvocationError(
                     message=f"LLM invocation failed: {str(e)}",
                     raw_response="",
                     original_error=e,

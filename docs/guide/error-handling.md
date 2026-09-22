@@ -7,6 +7,7 @@ etter raises structured exceptions so you can handle each failure mode precisely
 ```
 GeoFilterError
 ├── ParsingError          — LLM failed to produce valid structured output
+│   └── LLMInvocationError  — the LLM call itself failed (network, rate limit, provider error)
 ├── ValidationError
 │   ├── NoReferenceLocationError  — query has no named geographic location
 │   └── UnknownRelationError      — relation not in registered config
@@ -31,6 +32,25 @@ except ParsingError as e:
     print(f"Parsing failed: {e}")
     print(f"Raw LLM response: {e.raw_response}")
 ```
+
+### LLMInvocationError
+
+A subclass of `ParsingError` raised when the request to the LLM fails before any output is produced: network errors, timeouts, provider errors and rate limits (HTTP 429). The provider's exception is attached as `original_error`. Catch it separately when you want to retry transport failures without retrying malformed output, for example in a concurrent `parse_batch`:
+
+```python
+from etter import LLMInvocationError, ParsingError
+
+try:
+    result = parser.parse("some query")
+except LLMInvocationError as e:
+    # Transient: back off and retry, or configure max_retries on the LLM
+    log.warning("LLM call failed", error=e.original_error)
+except ParsingError as e:
+    # Malformed output: retrying the same prompt rarely helps
+    log.error("Bad LLM output", raw=e.raw_response)
+```
+
+`raw_response` is always empty on an `LLMInvocationError`.
 
 ## NoReferenceLocationError
 

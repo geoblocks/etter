@@ -228,10 +228,12 @@ geo = finalize_geo_query(result.geo, config, query)
 ## Error Handling
 
 ```python
-from etter import ParsingError, UnknownRelationError, LowConfidenceError
+from etter import LLMInvocationError, ParsingError, UnknownRelationError, LowConfidenceError
 
 try:
     result = parser.parse("some query")
+except LLMInvocationError as e:
+    print(f"LLM call failed (retryable): {e.original_error}")
 except ParsingError as e:
     print(f"Failed to parse: {e}")
     print(f"Raw LLM response: {e.raw_response}")
