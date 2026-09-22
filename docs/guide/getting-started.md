@@ -192,4 +192,4 @@ results = chain.batch(
 # [GeoQuery(...), NoReferenceLocationError(...)]
 ```
 
-`ainvoke`, `abatch` and `batch_as_completed` work the same way.
+`ainvoke`, `abatch` and `batch_as_completed` work the same way. If you only need concurrency, `parser.parse_batch(queries, max_concurrency=4)` and its async twin `aparse_batch` do the same without building a chain; a rate-limited call surfaces as `LLMInvocationError` (see [Error Handling](/guide/error-handling)).

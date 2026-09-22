@@ -155,7 +155,8 @@ Main class for parsing queries.
 - `parse(query: str) -> GeoQuery`: Parse a single query
 - `aparse(query: str) -> GeoQuery`: Async version of `parse` (awaits `ainvoke` on the LLM)
 - `parse_stream(query: str) -> AsyncGenerator[dict]`: Parse with streaming events
-- `parse_batch(queries: List[str]) -> List[GeoQuery]`: Parse multiple queries
+- `parse_batch(queries: List[str], max_concurrency: int = 1) -> List[GeoQuery]`: Parse multiple queries, optionally in parallel threads
+- `aparse_batch(queries: List[str], max_concurrency: int = 1) -> List[GeoQuery]`: Async version of `parse_batch`
 - `get_available_relations(category: Optional[str]) -> List[str]`: List available relations
 - `describe_relation(name: str) -> str`: Get relation description
 
