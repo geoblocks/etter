@@ -10,9 +10,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from .datasources.protocol import GeoDataSource
 from .exceptions import ParsingError
 from .models import GeoQuery, RelationCategory
-from .prompts import build_prompt_template
+from .prompts import build_geo_prompt_template
 from .spatial_config import SpatialRelationConfig
-from .validators import validate_query
+from .validators import finalize_geo_query
 
 
 class GeoFilterParser:
@@ -106,7 +106,7 @@ class GeoFilterParser:
         if self.datasource is not None:
             available_types = self.datasource.get_available_types()
 
-        return build_prompt_template(
+        return build_geo_prompt_template(
             spatial_config=self.spatial_config,
             include_examples=self.include_examples,
             available_types=available_types,
@@ -136,11 +136,10 @@ class GeoFilterParser:
 
     def _finalize(self, geo_query: GeoQuery, query: str) -> GeoQuery:
         """Set original_query and run the validation pipeline."""
-        geo_query.original_query = query
-
-        return validate_query(
+        return finalize_geo_query(
             geo_query,
             self.spatial_config,
+            query,
             confidence_threshold=self.confidence_threshold,
             strict_mode=self.strict_mode,
         )

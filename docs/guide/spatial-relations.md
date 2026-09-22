@@ -6,9 +6,11 @@ etter supports 21 built-in spatial relations across four categories.
 
 | Relation | Behavior | Default distance |
 |----------|----------|-----------------|
-| `in` | Exact geometry match — passthrough | — |
+| `in` | Exact geometry match — passthrough for polygons | — |
 
 **Example:** `"restaurants in Geneva"` → returns Geneva's boundary polygon as-is.
+
+**Point and line references:** a point or line cannot meaningfully contain anything, so `apply_spatial_relation()` falls back to a boundary buffer sized from the smallest area bracket (500 m, see [Area-Based Distance Inference](#area-based-distance-inference)).
 
 ## Buffer / Proximity
 
@@ -61,7 +63,9 @@ All directional relations produce a 90° sector wedge extending outward from the
 
 ## Area-Based Distance Inference
 
-The "Default distance" values above only apply when `buffer_config.inferred=False` (an explicit distance was set, e.g. from `SpatialRelation.explicit_distance`, "within 5km", "30 min walk"). When `inferred=True` — no explicit distance in the query — `apply_spatial_relation()` computes the geodesic area of the reference geometry (via `pyproj.Geod`) and picks a distance from area-based brackets instead:
+The "Default distance" values above are what the parser writes into `buffer_config.distance_m` when the query states no distance; the config is then flagged `inferred=True`. When the query does state a distance ("within 5km", "30 min walk"), `SpatialRelation.explicit_distance` overrides the default and the config is flagged `inferred=False`.
+
+At geometry time, `apply_spatial_relation()` replaces an inferred default: it computes the geodesic area of the reference geometry (via `pyproj.Geod`) and picks a distance from area-based brackets instead. An explicit distance is never changed:
 
 | Geometry area | Proximity default | Erosion default |
 |---|---|---|
