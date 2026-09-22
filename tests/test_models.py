@@ -204,3 +204,14 @@ def test_geo_query_serialization():
     assert data["reference_location"]["name"] == "Bern"
     assert isinstance(json_str, str)
     assert "Bern" in json_str
+
+
+def test_buffer_relation_without_config_is_allowed_when_no_reference_location():
+    """A no-location query may still name a buffer relation; NoReferenceLocationError must win over buffer checks."""
+    geo_query = GeoQuery(
+        spatial_relation=SpatialRelation(relation="near", category="buffer"),
+        reference_location=None,
+        buffer_config=None,
+        confidence_breakdown=ConfidenceScore(overall=0.9, location_confidence=0.0, relation_confidence=0.9),
+    )
+    assert geo_query.buffer_config is None

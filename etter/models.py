@@ -152,8 +152,14 @@ class GeoQuery(BaseModel):
     @model_validator(mode="after")
     def validate_buffer_config_consistency(self) -> "GeoQuery":
         """Validate buffer_config consistency with relation category."""
-        # Buffer and directional relations must have buffer_config
-        if self.spatial_relation.category in ("buffer", "directional") and self.buffer_config is None:
+        # Buffer and directional relations must have buffer_config. Skipped when there is no
+        # reference location: the query is rejected with NoReferenceLocationError downstream,
+        # which is the useful error, and the LLM legitimately omits buffer_config in that case.
+        if (
+            self.spatial_relation.category in ("buffer", "directional")
+            and self.buffer_config is None
+            and self.reference_location is not None
+        ):
             raise ValueError(
                 f"{self.spatial_relation.category} relation '{self.spatial_relation.relation}' requires buffer_config"
             )

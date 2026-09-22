@@ -34,7 +34,10 @@ except ParsingError as e:
 
 ## NoReferenceLocationError
 
-Raised when the query contains no named geographic location — for example pure attribute queries like "vineyards below 600 m" or "slopes steeper than 30°". These are dataset-level attribute filters that must be handled at the application layer; etter only understands spatial relations to named places.
+Raised when the query contains no named geographic location. Two kinds of query end up here:
+
+- Pure attribute queries like "vineyards below 600 m" or "slopes steeper than 30°". These are dataset-level attribute filters that must be handled at the application layer.
+- Queries whose only "place" is a generic word, like "hikes around a lake" or "hotels near the station". Only proper nouns count as a reference location; a generic terrain or facility word is not resolvable in a datasource.
 
 ```python
 from etter import NoReferenceLocationError
