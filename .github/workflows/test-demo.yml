@@ -68,24 +68,9 @@ jobs:
           docker compose -f demo/docker-compose.yml up --build -d --wait
       - name: Test demo composition
         run: |
-          check_url() {
-            local url=$1
-            local tmpfile
-            tmpfile=$(mktemp)
-            local http_code
-            http_code=$(curl -sSo "$tmpfile" -w "%{http_code}" "$url")
-            if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
-              echo "FAILED $url (HTTP $http_code):"
-              cat "$tmpfile"
-              rm "$tmpfile"
-              return 1
-            fi
-            echo "OK $url (HTTP $http_code)"
-            rm "$tmpfile"
-          }
-          check_url http://localhost:8000/
-          check_url http://localhost:8000/docs
-          check_url http://localhost:3002/health
+          curl -fsS -o /dev/null -w "OK %{url}\n" http://localhost:8000/
+          curl -fsS -o /dev/null -w "OK %{url}\n" http://localhost:8000/docs
+          curl -fsS -o /dev/null -w "OK %{url}\n" http://localhost:3002/health
       - name: Dump logs on failure
         if: failure()
         run: docker compose -f demo/docker-compose.yml logs
