@@ -7,6 +7,7 @@ etter raises structured exceptions so you can handle each failure mode precisely
 ```
 GeoFilterError
 ├── ParsingError          — LLM failed to produce valid structured output
+│   └── LLMInvocationError  — the LLM call itself failed (network, rate limit, provider error)
 ├── ValidationError
 │   ├── NoReferenceLocationError  — query has no named geographic location
 │   └── UnknownRelationError      — relation not in registered config
@@ -32,9 +33,31 @@ except ParsingError as e:
     print(f"Raw LLM response: {e.raw_response}")
 ```
 
+### LLMInvocationError
+
+A subclass of `ParsingError` raised when the request to the LLM fails before any output is produced: network errors, timeouts, provider errors and rate limits (HTTP 429). The provider's exception is attached as `original_error`. Catch it separately when you want to retry transport failures without retrying malformed output, for example in a concurrent `parse_batch`:
+
+```python
+from etter import LLMInvocationError, ParsingError
+
+try:
+    result = parser.parse("some query")
+except LLMInvocationError as e:
+    # Transient: back off and retry, or configure max_retries on the LLM
+    log.warning("LLM call failed", error=e.original_error)
+except ParsingError as e:
+    # Malformed output: retrying the same prompt rarely helps
+    log.error("Bad LLM output", raw=e.raw_response)
+```
+
+`raw_response` is always empty on an `LLMInvocationError`.
+
 ## NoReferenceLocationError
 
-Raised when the query contains no named geographic location — for example pure attribute queries like "vineyards below 600 m" or "slopes steeper than 30°". These are dataset-level attribute filters that must be handled at the application layer; etter only understands spatial relations to named places.
+Raised when the query contains no named geographic location. Two kinds of query end up here:
+
+- Pure attribute queries like "vineyards below 600 m" or "slopes steeper than 30°". These are dataset-level attribute filters that must be handled at the application layer.
+- Queries whose only "place" is a generic word, like "hikes around a lake" or "hotels near the station". Only proper nouns count as a reference location; a generic terrain or facility word is not resolvable in a datasource.
 
 ```python
 from etter import NoReferenceLocationError

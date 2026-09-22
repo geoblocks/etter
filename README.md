@@ -155,7 +155,8 @@ Main class for parsing queries.
 - `parse(query: str) -> GeoQuery`: Parse a single query
 - `aparse(query: str) -> GeoQuery`: Async version of `parse` (awaits `ainvoke` on the LLM)
 - `parse_stream(query: str) -> AsyncGenerator[dict]`: Parse with streaming events
-- `parse_batch(queries: List[str]) -> List[GeoQuery]`: Parse multiple queries
+- `parse_batch(queries: List[str], max_concurrency: int = 1) -> List[GeoQuery]`: Parse multiple queries, optionally in parallel threads
+- `aparse_batch(queries: List[str], max_concurrency: int = 1) -> List[GeoQuery]`: Async version of `parse_batch`
 - `get_available_relations(category: Optional[str]) -> List[str]`: List available relations
 - `describe_relation(name: str) -> str`: Get relation description
 
@@ -228,10 +229,12 @@ geo = finalize_geo_query(result.geo, config, query)
 ## Error Handling
 
 ```python
-from etter import ParsingError, UnknownRelationError, LowConfidenceError
+from etter import LLMInvocationError, ParsingError, UnknownRelationError, LowConfidenceError
 
 try:
     result = parser.parse("some query")
+except LLMInvocationError as e:
+    print(f"LLM call failed (retryable): {e.original_error}")
 except ParsingError as e:
     print(f"Failed to parse: {e}")
     print(f"Raw LLM response: {e.raw_response}")

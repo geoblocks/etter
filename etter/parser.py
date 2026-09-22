@@ -6,9 +6,10 @@ from collections.abc import AsyncGenerator
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
 
 from .datasources.protocol import GeoDataSource
-from .exceptions import ParsingError
+from .exceptions import LLMInvocationError, ParsingError
 from .models import GeoQuery, RelationCategory
 from .prompts import build_geo_prompt_template
 from .spatial_config import SpatialRelationConfig
@@ -203,7 +204,7 @@ class GeoFilterParser:
         try:
             response = self.structured_llm.invoke(formatted_messages)
         except Exception as e:
-            raise ParsingError(
+            raise LLMInvocationError(
                 message=f"LLM invocation failed: {str(e)}",
                 raw_response="",
                 original_error=e,
@@ -224,7 +225,7 @@ class GeoFilterParser:
         try:
             response = await self.structured_llm.ainvoke(formatted_messages)
         except Exception as e:
-            raise ParsingError(
+            raise LLMInvocationError(
                 message=f"LLM invocation failed: {str(e)}",
                 raw_response="",
                 original_error=e,
@@ -292,7 +293,7 @@ class GeoFilterParser:
                 response = await self.structured_llm.ainvoke(formatted_messages)
             except Exception as e:
                 yield {"type": "error", "content": f"LLM invocation failed: {str(e)}"}
-                raise ParsingError(
+                raise LLMInvocationError(
                     message=f"LLM invocation failed: {str(e)}",
                     raw_response="",
                     original_error=e,
@@ -325,15 +326,15 @@ class GeoFilterParser:
             yield {"type": "error", "content": f"Error during parsing: {str(e)}"}
             raise
 
-    def parse_batch(self, queries: list[str]) -> list[GeoQuery]:
+    def parse_batch(self, queries: list[str], max_concurrency: int = 1) -> list[GeoQuery]:
         """
-        Parse multiple queries in batch.
-
-        Note: This is a simple sequential implementation.
-        For true parallelization, consider using async methods or ThreadPoolExecutor.
+        Parse multiple queries.
 
         Args:
             queries: List of natural language queries
+            max_concurrency: Number of queries parsed in parallel (threads). Keep it within
+                the provider's rate limit and configure retries on the LLM (e.g.
+                ``max_retries``) before raising it above 1.
 
         Returns:
             List of GeoQuery objects (same order as input)
@@ -341,7 +342,20 @@ class GeoFilterParser:
         Raises:
             Same exceptions as parse() for any failing query
         """
-        return [self.parse(query) for query in queries]
+        return RunnableLambda(self.parse).batch(queries, config={"max_concurrency": max_concurrency})
+
+    async def aparse_batch(self, queries: list[str], max_concurrency: int = 1) -> list[GeoQuery]:
+        """
+        Async counterpart to :meth:`parse_batch`, built on :meth:`aparse`.
+
+        Args:
+            queries: List of natural language queries
+            max_concurrency: Number of LLM calls in flight at once
+
+        Returns:
+            List of GeoQuery objects (same order as input)
+        """
+        return await RunnableLambda(self.aparse).abatch(queries, config={"max_concurrency": max_concurrency})
 
     def get_available_relations(self, category: RelationCategory | None = None) -> list[str]:
         """

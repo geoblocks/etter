@@ -238,6 +238,25 @@ EXAMPLES: list[ExampleQuery] = [
             ),
         ),
     ),
+    # Generic noun, not a named place (English)
+    ExampleQuery(
+        input="hotels near the station",
+        language="en",
+        description="Generic facility word, not a proper noun — keep the relation, reference_location must be null",
+        exclude_none=False,
+        output=GeoQuery(
+            query_type="simple",
+            spatial_relation=SpatialRelation(relation="near", category="buffer", explicit_distance=None),
+            reference_location=None,
+            buffer_config=None,
+            confidence_breakdown=ConfidenceScore(
+                overall=0.9,
+                location_confidence=0.0,
+                relation_confidence=0.9,
+                reasoning="'the station' is a generic facility word, no specific station is named",
+            ),
+        ),
+    ),
     # Clipping relation (English) — one example is sufficient; the LLM generalises to
     # southern_part_of / eastern_part_of / western_part_of by analogy with the relation names.
     ExampleQuery(

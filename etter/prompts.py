@@ -16,7 +16,8 @@ Your ONLY task is to extract the GEOGRAPHIC FILTER from natural language queries
 - IGNORE: The subject/activity/feature being searched for (e.g., "hiking", "restaurants", "hotels")
 
 Your task is to analyze natural language queries (in any language) and extract:
-1. The reference location (what place is mentioned?)
+1. The reference location: a specific, named place (proper noun). Generic words such as
+   "the station", "a lake", "the city centre" are NOT a reference location → null
 2. The spatial relationship (how are things related spatially?)
 3. Buffer/distance parameters (if applicable)
 
@@ -81,6 +82,11 @@ No Named Location:
   * "slopes steeper than 30°" → reference_location: null
   * "buildings before 1900" → reference_location: null
 - Do NOT hallucinate a location name from numeric values or attribute thresholds.
+- Only proper nouns qualify as a reference location. Generic terrain or facility words
+  ("a lake", "the station", "am See", "the mountains", "a river") are NOT locations:
+  * "hikes around a lake" → reference_location: null
+  * "hotels near the station" → reference_location: null
+  * "hikes near Lake Geneva" → name="Lake Geneva" (a specific lake is named)
 
 Distance Extraction:
 - Extract explicit distances: "within 5km" → explicit_distance=5000
@@ -99,7 +105,7 @@ Confidence Scoring:
 - overall: 0.9-1.0 = highly confident, 0.7-0.9 = confident, 0.5-0.7 = uncertain, <0.5 = very uncertain
 - Break down: location_confidence, relation_confidence
 - Include reasoning to explain confidence scores and aid debugging
-- Lower confidence for ambiguous names, unclear relations, generic references ("the train station")
+- Lower confidence for ambiguous names or unclear relations
 
 Spatial Relation Selection Rules:
 - River/road banks: "rive droite/right bank" → right_bank; "rive gauche/left bank" → left_bank
