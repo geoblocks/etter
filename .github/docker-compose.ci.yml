@@ -1,0 +1,9 @@
+# CI override: load the small test fixtures instead of the real datasets.
+# Usage: docker compose -f demo/docker-compose.yml -f .github/docker-compose.ci.yml up
+services:
+  data-loader:
+    environment:
+      SWISSNAMES3D_PATH: /fixtures/swissnames3d_sample.json
+      IGN_BDCARTO_PATH: /fixtures/ign_bdcarto_sample.json
+    volumes:
+      - ../tests/fixtures:/fixtures:ro

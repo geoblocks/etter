@@ -43,29 +43,11 @@ jobs:
       - name: Set up env
         run: |
           cp demo/.env.example demo/.env
-      - name: Restore data cache
-        id: cache-data
-        uses: actions/cache/restore@v6
-        with:
-          path: data/
-          key: data-swissnames3d-2025-bdcarto-2025-09-15
-      - name: Download data
-        id: download-data
-        if: steps.cache-data.outputs.cache-hit != 'true'
-        run: |
-          make download-data
-          make download-data-ign
-      - name: Save data cache
-        if: steps.download-data.outcome == 'success' && steps.cache-data.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: data/
-          key: data-swissnames3d-2025-bdcarto-2025-09-15
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Build and run demo composition
         run: |
-          docker compose -f demo/docker-compose.yml up --build -d --wait
+          docker compose -f demo/docker-compose.yml -f .github/docker-compose.ci.yml up --build -d --wait
       - name: Test demo composition
         run: |
           curl -fsS -o /dev/null -w "OK %{url}\n" http://localhost:8000/
@@ -73,8 +55,8 @@ jobs:
           curl -fsS -o /dev/null -w "OK %{url}\n" http://localhost:3002/health
       - name: Dump logs on failure
         if: failure()
-        run: docker compose -f demo/docker-compose.yml logs
+        run: docker compose -f demo/docker-compose.yml -f .github/docker-compose.ci.yml logs
       - name: Tear down demo composition
         if: always()
         run: |
-          docker compose -f demo/docker-compose.yml down --volumes
+          docker compose -f demo/docker-compose.yml -f .github/docker-compose.ci.yml down --volumes
