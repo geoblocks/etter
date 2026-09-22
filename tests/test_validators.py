@@ -6,6 +6,7 @@ import warnings
 
 import pytest
 
+from etter import finalize_geo_query
 from etter.exceptions import LowConfidenceError, LowConfidenceWarning, NoReferenceLocationError, UnknownRelationError
 from etter.models import (
     BufferConfig,
@@ -18,7 +19,6 @@ from etter.spatial_config import SpatialRelationConfig
 from etter.validators import (
     check_confidence_threshold,
     enrich_with_defaults,
-    validate_query,
     validate_reference_location_present,
     validate_spatial_relation,
 )
@@ -78,8 +78,8 @@ def test_validate_reference_location_absent():
         validate_reference_location_present(query)
 
 
-def test_validate_query_raises_for_missing_location(spatial_config):
-    """Test that validate_query raises NoReferenceLocationError before other checks."""
+def test_finalize_geo_query_raises_for_missing_location(spatial_config):
+    """Test that finalize_geo_query raises NoReferenceLocationError before other checks."""
     query = GeoQuery(
         query_type="simple",
         spatial_relation=SpatialRelation(relation="in", category="containment"),
@@ -90,11 +90,11 @@ def test_validate_query_raises_for_missing_location(spatial_config):
             location_confidence=0.0,
             relation_confidence=0.95,
         ),
-        original_query="slopes steeper than 30°",
+        original_query="",
     )
 
     with pytest.raises(NoReferenceLocationError):
-        validate_query(query, spatial_config)
+        finalize_geo_query(query, spatial_config, "slopes steeper than 30°")
 
 
 def test_validate_known_relation(spatial_config, sample_query):
@@ -211,7 +211,7 @@ def test_confidence_below_threshold_strict(sample_query):
     assert exc_info.value.confidence == 0.50
 
 
-def test_validate_query_complete_pipeline(spatial_config):
+def test_finalize_geo_query_complete_pipeline(spatial_config):
     """Test complete validation pipeline."""
     query = GeoQuery(
         query_type="simple",
@@ -234,12 +234,13 @@ def test_validate_query_complete_pipeline(spatial_config):
             location_confidence=0.85,
             relation_confidence=0.85,
         ),
-        original_query="near Bern",
+        original_query="",
     )
 
-    validated = validate_query(
+    validated = finalize_geo_query(
         query,
         spatial_config,
+        "near Bern",
         confidence_threshold=0.6,
         strict_mode=False,
     )
@@ -247,6 +248,8 @@ def test_validate_query_complete_pipeline(spatial_config):
     # Should be enriched with defaults
     assert validated.buffer_config is not None
     assert validated.buffer_config.distance_m == 5000
+    # Should set original_query from the raw query string
+    assert validated.original_query == "near Bern"
 
 
 def test_enrich_directional_defaults(spatial_config):

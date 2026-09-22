@@ -32,7 +32,7 @@ If given a directory, automatically loads and concatenates all three boundary sh
 
 ## IGN BD-CARTO
 
-Wraps the [IGN BD-CARTO](https://geoservices.ign.fr/bdcarto) GeoPackage for France. Covers 14 thematic layers (administrative boundaries, hydrography, named places, protected areas, etc.).
+Wraps the [IGN BD-CARTO](https://cartes.gouv.fr/rechercher-une-donnee/dataset/IGNF_BD-CARTO) GeoPackage for France. Covers 14 thematic layers (administrative boundaries, hydrography, named places, protected areas, etc.).
 
 ```python
 from etter.datasources import IGNBDCartoSource
@@ -90,7 +90,7 @@ See [`PostGISDataSource`](../api/etter.html#PostGISDataSource) for the full cons
 
 ## CompositeDataSource
 
-Fan-out across multiple datasources. Sources are queried in order and results are accumulated until `max_results` is reached:
+Fan-out across multiple datasources. Every source is queried in order and the results are concatenated. `max_results` is passed to each source individually, so the merged list can contain up to `max_results` features per source:
 
 ```python
 from etter.datasources import CompositeDataSource, SwissNames3DSource, SwissBoundaries3DSource, IGNBDCartoSource

@@ -117,7 +117,7 @@ USER_TEMPLATE = """Parse the following location query:
 Query: {query}"""
 
 
-def build_prompt_template(
+def build_geo_prompt_template(
     spatial_config: SpatialRelationConfig,
     include_examples: bool = True,
     available_types: list[str] | None = None,

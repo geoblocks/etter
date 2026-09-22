@@ -169,25 +169,28 @@ def check_confidence_threshold(geo_query: GeoQuery, threshold: float, strict: bo
     warnings.warn(LowConfidenceWarning(confidence, message), stacklevel=3)
 
 
-def validate_query(
+def finalize_geo_query(
     geo_query: GeoQuery,
     spatial_config: SpatialRelationConfig,
+    query: str,
     confidence_threshold: float = 0.6,
     strict_mode: bool = False,
 ) -> GeoQuery:
     """
-    Run complete validation pipeline on a parsed query.
+    Set original_query and run the complete validation pipeline on a parsed query.
 
-    This is a convenience function that runs all validation steps in order:
-    0. Validate reference location is present
-    1. Validate spatial relation is registered
-    2. Enrich with defaults from config
-    3. Validate buffer config consistency
-    4. Check confidence threshold
+    This is a convenience function that runs all steps in order:
+    0. Set original_query to the caller-provided query string
+    1. Validate reference location is present
+    2. Validate spatial relation is registered
+    3. Enrich with defaults from config
+    4. Validate buffer config consistency
+    5. Check confidence threshold
 
     Args:
-        geo_query: Parsed query to validate
+        geo_query: Parsed query to finalize
         spatial_config: Spatial relation configuration
+        query: Original natural-language query text, as provided by the caller
         confidence_threshold: Minimum acceptable confidence
         strict_mode: If True, raise error on low confidence. If False, warn.
 
@@ -200,19 +203,22 @@ def validate_query(
         ValidationError: If validation checks fail
         LowConfidenceError: If strict mode and confidence below threshold
     """
-    # 0. Validate reference location is present
+    # 0. Set original_query
+    geo_query.original_query = query
+
+    # 1. Validate reference location is present
     validate_reference_location_present(geo_query)
 
-    # 1. Validate spatial relation
+    # 2. Validate spatial relation
     validate_spatial_relation(geo_query, spatial_config)
 
-    # 2. Enrich with defaults
+    # 3. Enrich with defaults
     geo_query = enrich_with_defaults(geo_query, spatial_config)
 
-    # 3. Validate buffer config
+    # 4. Validate buffer config
     validate_buffer_config_consistency(geo_query)
 
-    # 4. Check confidence
+    # 5. Check confidence
     check_confidence_threshold(geo_query, confidence_threshold, strict_mode)
 
     return geo_query

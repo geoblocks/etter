@@ -45,15 +45,25 @@ from .models import (
 )
 from .parser import GeoFilterParser
 
+# Prompts
+from .prompts import build_geo_prompt_template
+
 # Spatial operations
 from .spatial import apply_spatial_relation
 
 # Configuration
 from .spatial_config import RelationConfig, SpatialRelationConfig
 
+# Validation
+from .validators import finalize_geo_query
+
 __all__ = [
     # Main API
     "GeoFilterParser",
+    # Prompts
+    "build_geo_prompt_template",
+    # Validation
+    "finalize_geo_query",
     # Models
     "GeoQuery",
     "SpatialRelation",

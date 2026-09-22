@@ -182,6 +182,25 @@ Structured output model representing the parsed geographic filter.
 
 **Note:** etter is fully implemented with three integrated layers: parsing, geographic resolution via datasources, and spatial operations. The demo API shows a complete end-to-end workflow that resolves locations and computes search areas.
 
+### Composing With Your Own Schema
+
+To extract your own fields from the same query in a single LLM call, nest `GeoQuery` in your output model, reuse etter's prompt, and validate the nested result with `finalize_geo_query`:
+
+```python
+from pydantic import BaseModel
+from etter import GeoQuery, SpatialRelationConfig, build_geo_prompt_template, finalize_geo_query
+
+class Output(BaseModel):
+    geo: GeoQuery
+    language: str
+
+config = SpatialRelationConfig()
+prompt = build_geo_prompt_template(config, additional_instructions="Also return the ISO 639-1 code of the query language.")
+
+result = llm.with_structured_output(Output).invoke(prompt.format_messages(query=query))
+geo = finalize_geo_query(result.geo, config, query)
+```
+
 ## Available Spatial Relations
 
 ### Containment
