@@ -34,3 +34,16 @@ async def test_aparse_raises_llm_invocation_error():
 
     with pytest.raises(LLMInvocationError):
         await parser.aparse("near Lake Geneva")
+
+
+async def test_parse_stream_reports_llm_failure_once():
+    parser = GeoFilterParser(llm=FailingLLM())
+    events = []
+
+    with pytest.raises(LLMInvocationError):
+        async for event in parser.parse_stream("near Lake Geneva"):
+            events.append(event)
+
+    error_events = [e for e in events if e["type"] == "error"]
+    assert len(error_events) == 1
+    assert error_events[0]["content"].startswith("LLM invocation failed")

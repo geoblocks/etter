@@ -48,8 +48,8 @@ Clipping relations clip the reference geometry to a directional half-plane. They
 
 All directional relations produce a 90° sector wedge extending outward from the reference geometry centroid.
 
-| Relation | Direction | Default radius |
-|----------|-----------|---------------|
+| Relation | Direction | Default distance |
+|----------|-----------|-----------------|
 | `north_of` | 0° | 10 km |
 | `northeast_of` | 45° | 10 km |
 | `east_of` | 90° | 10 km |
@@ -60,6 +60,8 @@ All directional relations produce a 90° sector wedge extending outward from the
 | `northwest_of` | 315° | 10 km |
 
 **Example:** `"5km north of Lausanne"` → 90° sector polygon extending 5km north from Lausanne's centroid.
+
+The 10 km default only applies until the geometry is known: when the query states no distance, `apply_spatial_relation()` replaces it with a value sized to the reference geometry (see [Area-Based Distance Inference](#area-based-distance-inference)).
 
 ## Area-Based Distance Inference
 
@@ -78,8 +80,10 @@ This means the same relation (e.g. `near`) produces a smaller buffer around a vi
 
 ## Registering Custom Relations
 
+Register additional relations on a `SpatialRelationConfig` and pass it to the parser:
+
 ```python
-from etter import SpatialRelationConfig, RelationConfig
+from etter import GeoFilterParser, RelationConfig, SpatialRelationConfig
 
 config = SpatialRelationConfig()
 config.register_relation(RelationConfig(
@@ -89,6 +93,21 @@ config.register_relation(RelationConfig(
     default_distance_m=1000,
     buffer_from="center",
 ))
+
+parser = GeoFilterParser(llm=llm, spatial_config=config)
+```
+
+The `description` is shown to the LLM, so write it as guidance for when to pick the relation. Other options depend on the category:
+
+- **Buffer**: `ring_only=True` subtracts the reference geometry to leave only the surrounding ring (requires `buffer_from="boundary"`); `side="left"` or `"right"` buffers one side of a linear feature only.
+- **Directional**: `direction_angle_degrees` sets the sector's direction (0 = N, 90 = E, 180 = S, 270 = W) and `sector_angle_degrees` its width.
+
+For directional and clipping relations, `apply_spatial_relation()` reads these options from the config, so pass the same one to it — otherwise it only knows the built-ins and raises `UnknownRelationError`:
+
+```python
+area = apply_spatial_relation(
+    geometry, relation, buffer_config, spatial_config=config
+)
 ```
 
 See [`SpatialRelationConfig`](../api/etter.html#SpatialRelationConfig) and [`RelationConfig`](../api/etter.html#RelationConfig) for all available options.
@@ -99,18 +118,25 @@ By default `apply_spatial_relation()` returns a GeoJSON geometry dict. Use the `
 
 ```python
 from etter import apply_spatial_relation
-from etter.models import SpatialRelation, BufferConfig
 
-geometry = datasource.search("Lausanne")[0]["geometry"]
+geo_query = parser.parse("near Lausanne")
+ref = geo_query.reference_location
+geometry = datasource.search(ref.name)[0]["geometry"]
+relation = geo_query.spatial_relation
+buffer_config = geo_query.buffer_config
 
 # GeoJSON dict (default)
 result = apply_spatial_relation(geometry, relation, buffer_config)
 
 # WKT string
-result_wkt = apply_spatial_relation(geometry, relation, buffer_config, geometry_format="wkt")
+result_wkt = apply_spatial_relation(
+    geometry, relation, buffer_config, geometry_format="wkt"
+)
 
 # WKB hex string
-result_wkb = apply_spatial_relation(geometry, relation, buffer_config, geometry_format="wkb")
+result_wkb = apply_spatial_relation(
+    geometry, relation, buffer_config, geometry_format="wkb"
+)
 ```
 
 To convert raw datasource feature dicts, use `convert_feature_geometry()`:

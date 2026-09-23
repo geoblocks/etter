@@ -321,6 +321,9 @@ class GeoFilterParser:
             # Signal successful completion
             yield {"type": "finish"}
 
+        except ParsingError:
+            # Already reported by a specific error event above
+            raise
         except Exception as e:
             # Emit error event before re-raising
             yield {"type": "error", "content": f"Error during parsing: {str(e)}"}
