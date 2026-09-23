@@ -91,16 +91,21 @@ geo_query = await parser.aparse("north of Lausanne")
 For responsive UIs, use `parse_stream` to receive reasoning events in real time:
 
 ```python
-async for event in parser.parse_stream("5km north of Lausanne"):
-    if event["type"] == "reasoning":
-        print(event["content"])           # e.g. "Identified relation: north_of"
-    elif event["type"] == "data-response":
-        geo_query = event["content"]      # raw dict (GeoQuery fields)
-    elif event["type"] == "error":
-        raise RuntimeError(event["content"])
+from etter import GeoFilterError
+
+try:
+    async for event in parser.parse_stream("5km north of Lausanne"):
+        if event["type"] == "reasoning":
+            print(event["content"])       # e.g. "Analyzing spatial relationship and location"
+        elif event["type"] == "data-response":
+            geo_query = event["content"]  # raw dict (GeoQuery fields)
+        elif event["type"] == "error":
+            print(event["content"])       # human-readable message for the UI
+except GeoFilterError:
+    ...  # the typed exception is raised right after the "error" event
 ```
 
-See [`parse_stream`](../api/etter.html#GeoFilterParser.parse_stream) for all event types.
+The stream opens with a `start` event and ends with `finish` on success. An `error` event is informational: the generator then raises the same exception `parse` would (e.g. `LLMInvocationError`, `NoReferenceLocationError`), so handle failures with `try`/`except` as shown in [Error Handling](/guide/error-handling). See [`parse_stream`](../api/etter.html#GeoFilterParser.parse_stream) for all event types.
 
 ## Custom Spatial Relations
 
@@ -181,7 +186,7 @@ chain = RunnablePassthrough.assign(
 geo = chain.invoke({"query": "Wanderungen rund um Zermatt"})
 ```
 
-This is equivalent to `GeoFilterParser.parse`, and the chain gets every Runnable method for free. `batch` runs the queries concurrently and can collect failures instead of raising on the first one:
+This runs the same prompt and validation as `GeoFilterParser.parse`, and the chain gets every Runnable method for free. One difference: `parse` wraps provider failures in `LLMInvocationError`, while the chain lets the provider's own exception propagate. `batch` runs the queries concurrently and can collect failures instead of raising on the first one:
 
 ```python
 results = chain.batch(

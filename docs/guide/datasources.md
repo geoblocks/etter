@@ -55,7 +55,7 @@ source = PostGISDataSource(
     table="public.my_geodata",
     type_map={"municipality": ["COMMUNE"], "river": ["COURS_EAU"]},
 )
-results = source.search("Genève", type="city")
+results = source.search("Genève", type="municipality")
 ```
 
 The `type_map` maps **normalized type names** (as used by etter's type system) to lists of **raw values** in the database's type column — the same direction as `SwissNames3DSource`'s `OBJEKTART_TYPE_MAP`.
@@ -130,7 +130,7 @@ source.search("Morat", type="water")
 source.search("Morat", type="lake")
 ```
 
-See [`location_types`](../api/etter.html#etter.datasources.location_types) for the complete hierarchy.
+See [`location_types.py`](https://github.com/geoblocks/etter/blob/main/etter/datasources/location_types.py) for the complete hierarchy.
 
 ### TypeMap
 

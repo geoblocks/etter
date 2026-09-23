@@ -4,18 +4,15 @@ etter raises structured exceptions so you can handle each failure mode precisely
 
 ## Exception Hierarchy
 
-```
-GeoFilterError
-├── ParsingError          — LLM failed to produce valid structured output
-│   └── LLMInvocationError  — the LLM call itself failed (network, rate limit, provider error)
-├── ValidationError
-│   ├── NoReferenceLocationError  — query has no named geographic location
-│   └── UnknownRelationError      — relation not in registered config
-└── LowConfidenceError    — confidence below threshold (strict mode only)
-
-UserWarning
-└── LowConfidenceWarning  — confidence below threshold (lenient mode only)
-```
+- **[GeoFilterError](../api/etter.html#GeoFilterError)**: base class for every etter error
+  - **[ParsingError](#parsingerror)**: the LLM failed to produce valid structured output
+    - **[LLMInvocationError](#llminvocationerror)**: the LLM call itself failed (network, rate limit, provider error)
+  - **[ValidationError](../api/etter.html#ValidationError)**: the output is well-formed but fails validation
+    - **[NoReferenceLocationError](#noreferencelocationerror)**: the query has no named geographic location
+    - **[UnknownRelationError](#unknownrelationerror)**: the relation is not in the registered config
+  - **[LowConfidenceError](#lowconfidenceerror-lowconfidencewarning)**: confidence below threshold (strict mode only)
+- **UserWarning** (Python built-in)
+  - **[LowConfidenceWarning](#lowconfidenceerror-lowconfidencewarning)**: confidence below threshold (lenient mode only)
 
 All exceptions are importable from the top-level `etter` package.
 
@@ -99,8 +96,9 @@ from etter import LowConfidenceError, LowConfidenceWarning
 with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("always")
     result = parser.parse("some ambiguous query")
-    if w and issubclass(w[0].category, LowConfidenceWarning):
-        print(f"Low confidence: {w[0].message.confidence}")
+    for warning in w:
+        if issubclass(warning.category, LowConfidenceWarning):
+            print(f"Low confidence: {warning.message.confidence}")
 
 # Catch the error (strict mode)
 try:
@@ -115,29 +113,37 @@ except LowConfidenceError as e:
 ```python
 from etter import (
     GeoFilterParser,
+    LLMInvocationError,
+    LowConfidenceError,
     NoReferenceLocationError,
     ParsingError,
     UnknownRelationError,
-    LowConfidenceError,
 )
 
-try:
-    result = parser.parse(user_query)
-except NoReferenceLocationError:
-    # Query has no named location — handle attribute filter in the application layer
-    return {"error": "Query has no geographic location reference"}
-except ParsingError as e:
-    # LLM output was malformed
-    log.error("Parse failed", raw=e.raw_response)
-    return {"error": "Could not understand query"}
-except UnknownRelationError as e:
-    # LLM produced a relation we don't know
-    log.warning("Unknown relation", relation=e.relation_name)
-    return {"error": f"Unsupported spatial relation: {e.relation_name}"}
-except LowConfidenceError as e:
-    # Only in strict_mode=True
-    log.warning("Low confidence", score=e.confidence)
-    return {"error": "Query too ambiguous to parse reliably"}
+
+def handle_query(parser: GeoFilterParser, user_query: str) -> dict:
+    try:
+        result = parser.parse(user_query)
+    except NoReferenceLocationError:
+        # Query has no named location — handle attribute filter in the application layer
+        return {"error": "Query has no geographic location reference"}
+    except LLMInvocationError as e:
+        # LLM call failed (network, rate limit, provider error) — must come before ParsingError
+        log.warning("LLM call failed", error=e.original_error)
+        return {"error": "Service temporarily unavailable"}
+    except ParsingError as e:
+        # LLM output was malformed
+        log.error("Parse failed", raw=e.raw_response)
+        return {"error": "Could not understand query"}
+    except UnknownRelationError as e:
+        # LLM produced a relation we don't know
+        log.warning("Unknown relation", relation=e.relation_name)
+        return {"error": f"Unsupported spatial relation: {e.relation_name}"}
+    except LowConfidenceError as e:
+        # Only in strict_mode=True
+        log.warning("Low confidence", score=e.confidence)
+        return {"error": "Query too ambiguous to parse reliably"}
+    return result.model_dump()
 ```
 
-See [`exceptions`](../api/etter.html#etter.exceptions) for the full exception API.
+See [`GeoFilterError`](../api/etter.html#GeoFilterError) and its subclasses in the API reference for the full exception API.

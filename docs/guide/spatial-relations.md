@@ -99,9 +99,10 @@ By default `apply_spatial_relation()` returns a GeoJSON geometry dict. Use the `
 
 ```python
 from etter import apply_spatial_relation
-from etter.models import SpatialRelation, BufferConfig
 
-geometry = datasource.search("Lausanne")[0]["geometry"]
+geo_query = parser.parse("near Lausanne")
+geometry = datasource.search(geo_query.reference_location.name)[0]["geometry"]
+relation, buffer_config = geo_query.spatial_relation, geo_query.buffer_config
 
 # GeoJSON dict (default)
 result = apply_spatial_relation(geometry, relation, buffer_config)
