@@ -30,7 +30,7 @@ result = structured_llm.invoke(prompt.format_messages(query=query))
 geo = finalize_geo_query(result.geo, config, query)
 ```
 
-`finalize_geo_query` runs the same validation and enrichment pipeline as `GeoFilterParser` and accepts the same `confidence_threshold` and `strict_mode` arguments. See [`build_geo_prompt_template`](../api/etter.html#build_geo_prompt_template) and [`finalize_geo_query`](../api/etter.html#finalize_geo_query).
+`build_geo_prompt_template` takes the same prompt options as the parser: `include_examples`, `additional_instructions`, and `available_types` (pass `source.get_available_types()` for the equivalent of `GeoFilterParser(datasource=...)`). `finalize_geo_query` runs the same validation and enrichment pipeline as `GeoFilterParser` and accepts the same `confidence_threshold` and `strict_mode` arguments. See [`build_geo_prompt_template`](../api/etter.html#build_geo_prompt_template) and [`finalize_geo_query`](../api/etter.html#finalize_geo_query).
 
 ## Building a LangChain Chain
 

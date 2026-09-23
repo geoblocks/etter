@@ -106,7 +106,7 @@ A [`GeoQuery`](../api/etter.html#GeoQuery) has four parts you will use:
 
 ## Next Steps
 
-- [Using the Parser](./using-the-parser): async, streaming, batching, confidence thresholds and prompt customisation
+- [Using the Parser](./using-the-parser): choosing an LLM, async, streaming, batching, confidence thresholds and prompt customisation
 - [Spatial Relations](./spatial-relations): the 21 built-in relations and how to register your own
 - [Datasources](./datasources): the bundled datasources, PostGIS, and writing your own
 - [Error Handling](./error-handling): what etter raises and how to handle it

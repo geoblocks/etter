@@ -108,6 +108,20 @@ source = CompositeDataSource(
 results = source.search("Geneva", type="settlement")
 ```
 
+## Preloading
+
+`SwissNames3DSource`, `SwissBoundaries3DSource` and `IGNBDCartoSource` load their files into memory on the first search. For the full SwissNames3D dataset that takes around ten seconds, after which searches take milliseconds. Call `preload()` at application startup so the first user query doesn't pay that cost:
+
+```python
+source = CompositeDataSource(
+    SwissNames3DSource("data/swissnames3d/"),
+    IGNBDCartoSource("data/bdcarto/"),
+)
+source.preload()  # loads every source that supports preloading
+```
+
+`PostGISDataSource` has nothing to preload: it queries the database on every search.
+
 ## Type System
 
 All datasources share a common type hierarchy for fuzzy type matching. Query with a category and it matches all concrete types within it:

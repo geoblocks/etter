@@ -121,7 +121,8 @@ Review these files based on which Python modules you modified:
 - **Verify**:
   - `aparse`, `parse_stream`, `parse_batch` and `aparse_batch` signatures and defaults are current
   - Stream event types match those yielded by `parse_stream`
-  - Constructor options (`confidence_threshold`, `strict_mode`, `spatial_config`, `additional_instructions`) are current
+  - Constructor options (`confidence_threshold`, `strict_mode`, `spatial_config`, `datasource`, `include_examples`, `additional_instructions`) are current
+  - The structured-output method in "Choosing an LLM" matches `GeoFilterParser._build_structured_llm`
 
 #### `docs/guide/langchain.md`
 
