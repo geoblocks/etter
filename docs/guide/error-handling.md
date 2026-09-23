@@ -62,7 +62,7 @@ from etter import NoReferenceLocationError
 try:
     result = parser.parse("vineyards below 600 m")
 except NoReferenceLocationError:
-    # No named location — apply the attribute filter in your own query layer
+    # No named location: apply the attribute filter in your query layer
     ...
 ```
 
@@ -125,10 +125,11 @@ def handle_query(parser: GeoFilterParser, user_query: str) -> dict:
     try:
         result = parser.parse(user_query)
     except NoReferenceLocationError:
-        # Query has no named location — handle attribute filter in the application layer
+        # No named location: handle the attribute filter in the app layer
         return {"error": "Query has no geographic location reference"}
     except LLMInvocationError as e:
-        # LLM call failed (network, rate limit, provider error) — must come before ParsingError
+        # LLM call failed (network, rate limit, provider error).
+        # Must come before ParsingError, its parent class.
         log.warning("LLM call failed", error=e.original_error)
         return {"error": "Service temporarily unavailable"}
     except ParsingError as e:

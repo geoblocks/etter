@@ -55,13 +55,15 @@ from langchain.chat_models import init_chat_model
 from etter import GeoFilterParser
 import os
 
-llm = init_chat_model(model="gpt-4o", temperature=0, api_key=os.getenv("LLM_API_KEY"))
+llm = init_chat_model(
+    model="gpt-4o", temperature=0, api_key=os.getenv("LLM_API_KEY")
+)
 
 parser = GeoFilterParser(llm=llm)
 result = parser.parse("north of Lausanne")
 
-print(result.spatial_relation.relation)                            # "north_of"
-print(result.reference_location.name if result.reference_location else None)  # "Lausanne"
+print(result.spatial_relation.relation)       # "north_of"
+print(result.reference_location.name)         # "Lausanne"
 print(result.buffer_config.distance_m)        # 10000
 print(result.confidence_breakdown.overall)    # 0.95
 ```
@@ -89,7 +91,7 @@ area = apply_spatial_relation(
 # area is a GeoJSON geometry dict (WGS84): a 90° sector north of Lausanne
 ```
 
-`search` returns candidates ranked by relevance; picking the first one is the simplest strategy, but you can also let the user choose. If one place is split across several records, pass the list of their geometries instead — they are unioned before the relation is applied.
+`search` returns candidates ranked by relevance; picking the first one is the simplest strategy, but you can also let the user choose. Passing `type` filters the candidates, so if the LLM inferred the wrong type the list can be empty — retry without it (see [Type System](./datasources#type-system)). If one place is split across several records, pass the list of their geometries instead — they are unioned before the relation is applied.
 
 Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `ST_GeomFromText(:area, 4326)` in PostGIS). See [Spatial Relations](./spatial-relations#output-geometry-format).
 

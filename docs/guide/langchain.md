@@ -8,16 +8,25 @@ To extract your own fields from the same query in a single LLM call, nest `GeoQu
 
 ```python
 from pydantic import BaseModel
-from etter import GeoQuery, SpatialRelationConfig, build_geo_prompt_template, finalize_geo_query
+from etter import (
+    GeoQuery,
+    SpatialRelationConfig,
+    build_geo_prompt_template,
+    finalize_geo_query,
+)
 
 class Output(BaseModel):
     geo: GeoQuery
     language: str
 
 config = SpatialRelationConfig()
-prompt = build_geo_prompt_template(config, additional_instructions="Also return the ISO 639-1 code of the query language.")
+instructions = "Also return the ISO 639-1 code of the query language."
+prompt = build_geo_prompt_template(
+    config, additional_instructions=instructions
+)
 
-result = llm.with_structured_output(Output).invoke(prompt.format_messages(query=query))
+structured_llm = llm.with_structured_output(Output)
+result = structured_llm.invoke(prompt.format_messages(query=query))
 geo = finalize_geo_query(result.geo, config, query)
 ```
 
@@ -29,12 +38,26 @@ geo = finalize_geo_query(result.geo, config, query)
 
 ```python
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from etter import GeoQuery, SpatialRelationConfig, build_geo_prompt_template, finalize_geo_query
+from etter import (
+    GeoQuery,
+    SpatialRelationConfig,
+    build_geo_prompt_template,
+    finalize_geo_query,
+)
 
 config = SpatialRelationConfig()
-chain = RunnablePassthrough.assign(
-    geo=build_geo_prompt_template(config) | llm.with_structured_output(GeoQuery)
-) | RunnableLambda(lambda d: finalize_geo_query(d["geo"], config, d["query"]))
+prompt = build_geo_prompt_template(config)
+geo_llm = llm.with_structured_output(GeoQuery)
+
+
+def finalize(d: dict) -> GeoQuery:
+    return finalize_geo_query(d["geo"], config, d["query"])
+
+
+chain = (
+    RunnablePassthrough.assign(geo=prompt | geo_llm)
+    | RunnableLambda(finalize)
+)
 
 geo = chain.invoke({"query": "Wanderungen rund um Zermatt"})
 ```
@@ -43,7 +66,10 @@ This runs the same prompt and validation as `GeoFilterParser.parse`, and the cha
 
 ```python
 results = chain.batch(
-    [{"query": "restaurants in Geneva"}, {"query": "vineyards below 600 m"}],
+    [
+        {"query": "restaurants in Geneva"},
+        {"query": "vineyards below 600 m"},
+    ],
     config={"max_concurrency": 4},
     return_exceptions=True,
 )

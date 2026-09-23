@@ -8,10 +8,14 @@ By default etter warns on low confidence. Use `strict_mode=True` to raise instea
 
 ```python
 # Lenient: emits LowConfidenceWarning below threshold
-parser = GeoFilterParser(llm=llm, confidence_threshold=0.6, strict_mode=False)
+parser = GeoFilterParser(
+    llm=llm, confidence_threshold=0.6, strict_mode=False
+)
 
 # Strict: raises LowConfidenceError below threshold
-parser = GeoFilterParser(llm=llm, confidence_threshold=0.8, strict_mode=True)
+parser = GeoFilterParser(
+    llm=llm, confidence_threshold=0.8, strict_mode=True
+)
 ```
 
 See [Error Handling](./error-handling#lowconfidenceerror-lowconfidencewarning) for how to catch each one, and [`GeoQuery`](../api/etter.html#GeoQuery) for a full description of all output fields.
@@ -36,11 +40,12 @@ from etter import GeoFilterError
 try:
     async for event in parser.parse_stream("5km north of Lausanne"):
         if event["type"] == "reasoning":
-            print(event["content"])       # e.g. "Analyzing spatial relationship and location"
+            # e.g. "Analyzing spatial relationship and location"
+            print(event["content"])
         elif event["type"] == "data-response":
             geo_query = event["content"]  # raw dict (GeoQuery fields)
         elif event["type"] == "error":
-            print(event["content"])       # human-readable message for the UI
+            print(event["content"])  # human-readable message for the UI
 except GeoFilterError:
     ...  # the typed exception is raised right after the "error" event
 ```
@@ -81,7 +86,7 @@ parser = GeoFilterParser(
     llm=llm,
     additional_instructions=(
         "This application serves Swiss users. "
-        "'Lac Léman' and 'Lake Geneva' both refer to the same body of water. "
+        "'Lac Léman' and 'Lake Geneva' refer to the same body of water. "
         "Prefer the French endonym when the query is in French."
     ),
 )
