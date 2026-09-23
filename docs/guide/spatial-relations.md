@@ -78,8 +78,10 @@ This means the same relation (e.g. `near`) produces a smaller buffer around a vi
 
 ## Registering Custom Relations
 
+Register additional relations on a `SpatialRelationConfig` and pass it to the parser:
+
 ```python
-from etter import SpatialRelationConfig, RelationConfig
+from etter import GeoFilterParser, RelationConfig, SpatialRelationConfig
 
 config = SpatialRelationConfig()
 config.register_relation(RelationConfig(
@@ -89,7 +91,14 @@ config.register_relation(RelationConfig(
     default_distance_m=1000,
     buffer_from="center",
 ))
+
+parser = GeoFilterParser(llm=llm, spatial_config=config)
 ```
+
+The `description` is shown to the LLM, so write it as guidance for when to pick the relation. Other options depend on the category:
+
+- **Buffer**: `ring_only=True` subtracts the reference geometry to leave only the surrounding ring (requires `buffer_from="boundary"`); `side="left"` or `"right"` buffers one side of a linear feature only.
+- **Directional**: `direction_angle_degrees` sets the sector's direction (0 = N, 90 = E, 180 = S, 270 = W) and `sector_angle_degrees` its width.
 
 See [`SpatialRelationConfig`](../api/etter.html#SpatialRelationConfig) and [`RelationConfig`](../api/etter.html#RelationConfig) for all available options.
 

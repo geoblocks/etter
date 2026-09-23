@@ -107,12 +107,28 @@ Review these files based on which Python modules you modified:
 
 #### `docs/guide/getting-started.md`
 
-- **Maps to**: `etter/__init__.py`, `etter/parser.py`, `etter/examples.py`
+- **Maps to**: `etter/__init__.py`, `etter/parser.py`, `etter/models.py`, `etter/spatial.py`, `etter/examples.py`
 - **Verify**:
   - API usage examples match current function signatures
   - Default parameters and behavior are current
   - Installation steps reference correct package versions
   - Code snippets are runnable
+  - "From Query to Search Area" and "Understanding the Result" match `GeoQuery` fields and `apply_spatial_relation` behavior
+
+#### `docs/guide/using-the-parser.md`
+
+- **Maps to**: `etter/parser.py`
+- **Verify**:
+  - `aparse`, `parse_stream`, `parse_batch` and `aparse_batch` signatures and defaults are current
+  - Stream event types match those yielded by `parse_stream`
+  - Constructor options (`confidence_threshold`, `strict_mode`, `spatial_config`, `additional_instructions`) are current
+
+#### `docs/guide/langchain.md`
+
+- **Maps to**: `etter/prompts.py`, `etter/validators.py`
+- **Verify**:
+  - `build_geo_prompt_template` and `finalize_geo_query` signatures match the examples
+  - Chain examples run against the current prompt template variables
 
 #### `docs/guide/spatial-relations.md`
 

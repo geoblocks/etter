@@ -14,20 +14,26 @@ sequenceDiagram
     actor User
     participant App as Parent app
     participant Etter as etter
+    participant DS as Datasource
     participant DB as Database
 
     User->>App: "Hiking with children north of Lausanne"
 
     %% Parent app internal processing
-    App->>App: extracts: Activity="Hiking", Audience="children"
+    App->>App: extracts: activity="hiking", audience="children"
 
-    %% Forwarding spatial data to etter
-    App->>Etter: Request spatial parsing
-    Etter->>Etter: parses: relation="north_of", location="Lausanne"
-    Etter-->>App: Returns spatial parameters
+    %% etter extracts the geographic filter from the full query
+    App->>Etter: parser.parse(query)
+    Etter-->>App: GeoQuery: relation="north_of", location="Lausanne"
+
+    %% Resolving the reference location and building the search area
+    App->>DS: search("Lausanne")
+    DS-->>App: Lausanne geometry
+    App->>Etter: apply_spatial_relation(geometry, relation, buffer_config)
+    Etter-->>App: search area (sector polygon)
 
     %% Final database query
-    App->>DB: queries: WHERE activity='hiking' AND ST_Intersects(location, sector)
+    App->>DB: WHERE activity='hiking' AND audience='children' AND ST_Intersects(geom, area)
 ```
 
 ## Installation
@@ -39,7 +45,7 @@ pip install etter
 With PostGIS datasource support:
 
 ```bash
-pip install etter[postgis]
+pip install "etter[postgis]"
 ```
 
 ## Quick Start
@@ -62,139 +68,44 @@ print(result.confidence_breakdown.overall)    # 0.95
 
 See [`GeoFilterParser`](../api/etter.html#GeoFilterParser) for the full constructor signature and options.
 
-## Confidence and Strict Mode
+## From Query to Search Area
 
-By default etter warns on low confidence. Use `strict_mode=True` to raise instead:
-
-```python
-# Lenient: emits LowConfidenceWarning below threshold
-parser = GeoFilterParser(llm=llm, confidence_threshold=0.6, strict_mode=False)
-
-# Strict: raises LowConfidenceError below threshold
-parser = GeoFilterParser(llm=llm, confidence_threshold=0.8, strict_mode=True)
-```
-
-See [`GeoQuery`](../api/etter.html#GeoQuery) for a full description of all output fields.
-
-## Async parsing
-
-Inside an event loop (e.g. a FastAPI handler), use the async counterpart `aparse` so the LLM call does not block other requests:
+`parse` only tells you *what* the filter is. To get a geometry you can query with, resolve the reference location in a [datasource](./datasources) and apply the spatial relation to it:
 
 ```python
-geo_query = await parser.aparse("north of Lausanne")
-```
+from etter import SwissNames3DSource, apply_spatial_relation
 
-`aparse` returns the same `GeoQuery` as `parse`; it differs only in that it awaits `ainvoke` on the underlying LLM. See [`aparse`](../api/etter.html#GeoFilterParser.aparse).
+source = SwissNames3DSource("data/swissnames3d/")
 
-## Streaming
+geo_query = parser.parse("hiking north of Lausanne")
+ref = geo_query.reference_location
+features = source.search(ref.name, type=ref.type)
 
-For responsive UIs, use `parse_stream` to receive reasoning events in real time:
-
-```python
-from etter import GeoFilterError
-
-try:
-    async for event in parser.parse_stream("5km north of Lausanne"):
-        if event["type"] == "reasoning":
-            print(event["content"])       # e.g. "Analyzing spatial relationship and location"
-        elif event["type"] == "data-response":
-            geo_query = event["content"]  # raw dict (GeoQuery fields)
-        elif event["type"] == "error":
-            print(event["content"])       # human-readable message for the UI
-except GeoFilterError:
-    ...  # the typed exception is raised right after the "error" event
-```
-
-The stream opens with a `start` event and ends with `finish` on success. An `error` event is informational: the generator then raises the same exception `parse` would (e.g. `LLMInvocationError`, `NoReferenceLocationError`), so handle failures with `try`/`except` as shown in [Error Handling](/guide/error-handling). See [`parse_stream`](../api/etter.html#GeoFilterParser.parse_stream) for all event types.
-
-## Custom Spatial Relations
-
-Register additional relations beyond the 21 built-ins:
-
-```python
-from etter import SpatialRelationConfig, RelationConfig
-
-config = SpatialRelationConfig()
-config.register_relation(RelationConfig(
-    name="close_to",
-    category="buffer",
-    description="Very close proximity",
-    default_distance_m=1000,
-    buffer_from="center",
-    ring_only=False,  # Exclude reference feature for ring buffers
-    side=None,        # "left" or "right" for one-sided buffers
-    sector_angle_degrees=None,  # For custom directional sectors
-    direction_angle_degrees=None,  # Direction in degrees (0=N, 90=E, 180=S, 270=W)
-))
-
-parser = GeoFilterParser(llm=llm, spatial_config=config)
-```
-
-See [Spatial Relations](/guide/spatial-relations) for the full list of built-ins and configuration options.
-
-## Additional Instructions
-
-Pass `additional_instructions` to inject caller-specific rules into the prompt without forking the default system prompt. The text is added as a system message after the main prompt and before the few-shot examples.
-
-Typical uses: region-specific endonyms, domain aliases, or organization-specific place names.
-
-```python
-parser = GeoFilterParser(
-    llm=llm,
-    additional_instructions=(
-        "This application serves Swiss users. "
-        "'Lac Léman' and 'Lake Geneva' both refer to the same body of water. "
-        "Prefer the French endonym when the query is in French."
-    ),
+area = apply_spatial_relation(
+    features[0]["geometry"],
+    geo_query.spatial_relation,
+    geo_query.buffer_config,
 )
+# area is a GeoJSON geometry dict (WGS84): a 90° sector north of Lausanne
 ```
 
-## Composing With Your Own Schema
+`search` returns candidates ranked by relevance; picking the first one is the simplest strategy, but you can also let the user choose. If one place is split across several records, pass the list of their geometries instead — they are unioned before the relation is applied.
 
-To extract your own fields from the same query in a single LLM call, nest `GeoQuery` in your output model, reuse etter's prompt, and validate the nested result with `finalize_geo_query`:
+Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `ST_GeomFromText(:area, 4326)` in PostGIS). See [Spatial Relations](./spatial-relations#output-geometry-format).
 
-```python
-from pydantic import BaseModel
-from etter import GeoQuery, SpatialRelationConfig, build_geo_prompt_template, finalize_geo_query
+## Understanding the Result
 
-class Output(BaseModel):
-    geo: GeoQuery
-    language: str
+A [`GeoQuery`](../api/etter.html#GeoQuery) has four parts you will use:
 
-config = SpatialRelationConfig()
-prompt = build_geo_prompt_template(config, additional_instructions="Also return the ISO 639-1 code of the query language.")
+- **`spatial_relation`**: the relation name (`"north_of"`) and its category (`containment`, `buffer`, `directional` or `clipping`). `explicit_distance` holds the distance in metres when the query states one ("within 5 km").
+- **`reference_location`**: the place as named in the query (`name`) and the LLM's guess at its kind (`type`, e.g. `"city"`, `"lake"`). Pass both to your datasource's `search`.
+- **`buffer_config`**: how far to buffer, for buffer and directional relations; `None` for containment and clipping. `inferred=True` means the distance is a default rather than something the user said. `apply_spatial_relation` then replaces it with a value sized to the reference geometry and updates `buffer_config.distance_m` in place — in the example above, 10 000 m becomes 1 500 m for Lausanne. See [Area-Based Distance Inference](./spatial-relations#area-based-distance-inference).
+- **`confidence_breakdown`**: scores between 0 and 1 for the whole parse (`overall`), the location and the relation, plus the LLM's `reasoning`. See [confidence and strict mode](./using-the-parser#confidence-and-strict-mode).
 
-result = llm.with_structured_output(Output).invoke(prompt.format_messages(query=query))
-geo = finalize_geo_query(result.geo, config, query)
-```
+## Next Steps
 
-`finalize_geo_query` runs the same validation and enrichment pipeline as `GeoFilterParser` and accepts the same `confidence_threshold` and `strict_mode` arguments. See [`build_geo_prompt_template`](../api/etter.html#build_geo_prompt_template) and [`finalize_geo_query`](../api/etter.html#finalize_geo_query).
-
-## Building a LangChain Chain
-
-`build_geo_prompt_template` returns a standard `ChatPromptTemplate`, so it composes with any LangChain Runnable. Because the prompt step consumes the input dict, use `RunnablePassthrough.assign` to keep the query around for `finalize_geo_query`:
-
-```python
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from etter import GeoQuery, SpatialRelationConfig, build_geo_prompt_template, finalize_geo_query
-
-config = SpatialRelationConfig()
-chain = RunnablePassthrough.assign(
-    geo=build_geo_prompt_template(config) | llm.with_structured_output(GeoQuery)
-) | RunnableLambda(lambda d: finalize_geo_query(d["geo"], config, d["query"]))
-
-geo = chain.invoke({"query": "Wanderungen rund um Zermatt"})
-```
-
-This runs the same prompt and validation as `GeoFilterParser.parse`, and the chain gets every Runnable method for free. One difference: `parse` wraps provider failures in `LLMInvocationError`, while the chain lets the provider's own exception propagate. `batch` runs the queries concurrently and can collect failures instead of raising on the first one:
-
-```python
-results = chain.batch(
-    [{"query": "restaurants in Geneva"}, {"query": "vineyards below 600 m"}],
-    config={"max_concurrency": 4},
-    return_exceptions=True,
-)
-# [GeoQuery(...), NoReferenceLocationError(...)]
-```
-
-`ainvoke`, `abatch` and `batch_as_completed` work the same way. If you only need concurrency, `parser.parse_batch(queries, max_concurrency=4)` and its async twin `aparse_batch` do the same without building a chain; a rate-limited call surfaces as `LLMInvocationError` (see [Error Handling](/guide/error-handling)).
+- [Using the Parser](./using-the-parser): async, streaming, batching, confidence thresholds and prompt customisation
+- [Spatial Relations](./spatial-relations): the 21 built-in relations and how to register your own
+- [Datasources](./datasources): the bundled datasources, PostGIS, and writing your own
+- [Error Handling](./error-handling): what etter raises and how to handle it
+- [LangChain Integration](./langchain): extracting your own fields in the same LLM call, and building chains
