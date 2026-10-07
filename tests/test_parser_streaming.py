@@ -130,6 +130,20 @@ async def test_parse_stream_error_handling():
     assert "content" in error_events[0], "Error event should have content"
 
 
+async def test_parse_stream_reports_parsing_error_once():
+    """A malformed LLM response yields its specific error event, not a second generic one."""
+    parser = GeoFilterParser(llm=MockLLM(return_valid=False))
+    events = []
+
+    with pytest.raises(ParsingError):
+        async for event in parser.parse_stream("near Lake Geneva"):
+            events.append(event)
+
+    error_events = [e for e in events if e["type"] == "error"]
+    assert len(error_events) == 1
+    assert error_events[0]["content"].startswith("Failed to parse response")
+
+
 async def test_parse_stream_llm_reasoning():
     """Test that LLM's reasoning is included in stream."""
     mock_llm = MockLLM(return_valid=True)

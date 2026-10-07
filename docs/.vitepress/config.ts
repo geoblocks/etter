@@ -35,9 +35,11 @@ const baseConfig = defineConfig({
         text: "Guide",
         items: [
           { text: "Getting Started", link: "/guide/getting-started" },
+          { text: "Using the Parser", link: "/guide/using-the-parser" },
           { text: "Spatial Relations", link: "/guide/spatial-relations" },
           { text: "Datasources", link: "/guide/datasources" },
           { text: "Error Handling", link: "/guide/error-handling" },
+          { text: "LangChain Integration", link: "/guide/langchain" },
         ],
       },
       {

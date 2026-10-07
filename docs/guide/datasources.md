@@ -55,7 +55,7 @@ source = PostGISDataSource(
     table="public.my_geodata",
     type_map={"municipality": ["COMMUNE"], "river": ["COURS_EAU"]},
 )
-results = source.search("Genève", type="city")
+results = source.search("Genève", type="municipality")
 ```
 
 The `type_map` maps **normalized type names** (as used by etter's type system) to lists of **raw values** in the database's type column — the same direction as `SwissNames3DSource`'s `OBJEKTART_TYPE_MAP`.
@@ -81,7 +81,7 @@ Keys must be valid etter type names (concrete types such as `"lake"` or category
 Install the extra for PostGIS support:
 
 ```bash
-uv sync --extra postgis
+pip install "etter[postgis]"
 ```
 
 The search cascade is: exact match → fuzzy (`pg_trgm`) → ILIKE. CRS reprojection is done at query time via `ST_Transform` when the stored SRID differs from 4326.
@@ -93,7 +93,12 @@ See [`PostGISDataSource`](../api/etter.html#PostGISDataSource) for the full cons
 Fan-out across multiple datasources. Every source is queried in order and the results are concatenated. `max_results` is passed to each source individually, so the merged list can contain up to `max_results` features per source:
 
 ```python
-from etter.datasources import CompositeDataSource, SwissNames3DSource, SwissBoundaries3DSource, IGNBDCartoSource
+from etter.datasources import (
+    CompositeDataSource,
+    IGNBDCartoSource,
+    SwissBoundaries3DSource,
+    SwissNames3DSource,
+)
 
 source = CompositeDataSource(
     SwissNames3DSource("data/swissnames3d/"),
@@ -102,6 +107,20 @@ source = CompositeDataSource(
 )
 results = source.search("Geneva", type="settlement")
 ```
+
+## Preloading
+
+`SwissNames3DSource`, `SwissBoundaries3DSource` and `IGNBDCartoSource` load their files into memory on the first search. For the full SwissNames3D dataset that takes around ten seconds, after which searches take milliseconds. Call `preload()` at application startup so the first user query doesn't pay that cost:
+
+```python
+source = CompositeDataSource(
+    SwissNames3DSource("data/swissnames3d/"),
+    IGNBDCartoSource("data/bdcarto/"),
+)
+source.preload()  # loads every source that supports preloading
+```
+
+`PostGISDataSource` has nothing to preload: it queries the database on every search.
 
 ## Type System
 
@@ -130,7 +149,9 @@ source.search("Morat", type="water")
 source.search("Morat", type="lake")
 ```
 
-See [`location_types`](../api/etter.html#etter.datasources.location_types) for the complete hierarchy.
+In all bundled datasources `type` is a filter, not a ranking hint: features of other types are dropped, and a name that is neither a category nor a known type only matches features whose type is exactly that string. If the type the LLM inferred turns out wrong, a search can come back empty; retry without `type` to fall back to a name-only search.
+
+See [`location_types.py`](https://github.com/geoblocks/etter/blob/main/etter/datasources/location_types.py) for the complete hierarchy.
 
 ### TypeMap
 
@@ -150,7 +171,7 @@ my_map: TypeMap = {
 
 ## Implementing a Custom Datasource
 
-Any class with a `search` method and `get_available_types` method matching the protocol qualifies:
+Any class with `search`, `get_by_id` and `get_available_types` methods matching the protocol qualifies:
 
 ```python
 class MyDataSource:
@@ -163,7 +184,7 @@ class MyDataSource:
         type: str | None = None,
         max_results: int = 10,
     ) -> list[dict]:
-        # Return standard GeoJSON feature dicts
+        # Return GeoJSON Feature dicts in WGS84, best match first
         ...
 
     def get_by_id(self, feature_id: str) -> dict | None:
@@ -171,4 +192,10 @@ class MyDataSource:
         ...
 ```
 
-See [`GeoDataSource`](../api/etter.html#GeoDataSource) for the full protocol definition. `get_by_id()` is part of the protocol and is required if the datasource is used inside a `CompositeDataSource`, which calls it on each underlying source.
+Return features the way the bundled datasources do, so they can be mixed in a `CompositeDataSource`:
+
+- coordinates in WGS84 (EPSG:4326), since `apply_spatial_relation()` expects them;
+- a unique `id`, which `get_by_id()` looks up;
+- `name`, `type` and `confidence` in `properties`, with `type` taken from the [type hierarchy](#type-system).
+
+`get_available_types()` lists the concrete types your datasource returns; `GeoFilterParser(datasource=...)` passes them to the LLM so it infers types your datasource can match. See [`GeoDataSource`](../api/etter.html#GeoDataSource) for the full protocol definition.

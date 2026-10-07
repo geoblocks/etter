@@ -43,9 +43,10 @@ class GeoDataSource(Protocol):
 
         Args:
             name: Location name to search for (e.g., "Lake Geneva", "Bern").
-            type: Optional type hint for filtering/ranking results.
-                  Examples: "lake", "city", "mountain", "canton", "river".
-                  When provided, matching types are ranked higher.
+            type: Optional type filter. Accepts a concrete type or a category
+                  (e.g. "lake", "city", "water"); a category matches all concrete
+                  types within it. When provided, only features of matching types
+                  are returned.
             max_results: Maximum number of results to return.
 
         Returns:
