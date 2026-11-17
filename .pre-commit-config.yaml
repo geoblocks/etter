@@ -14,13 +14,7 @@ repos:
         args:
           - --fix
       - id: ruff-format
-  - repo: local
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.105
     hooks:
       - id: ty
-        name: ty
-        language: system
-        entry: bash
-        files: etter/
-        types: [python]
-        args: [-c, 'uv run ty check etter/']
-        pass_filenames: false
