@@ -53,6 +53,12 @@ Parent application handles feature/activity filtering and combines it with etter
 pip install etter
 ```
 
+etter depends on `langchain-core` only. Install your model provider, and `langchain` for `init_chat_model` as in the Quick Start:
+
+```bash
+pip install langchain langchain-openai
+```
+
 With PostGIS datasource support:
 
 ```bash

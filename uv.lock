@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -486,7 +486,7 @@ source = { editable = "." }
 dependencies = [
     { name = "geojson" },
     { name = "geopandas" },
-    { name = "langchain" },
+    { name = "langchain-core" },
     { name = "pydantic" },
     { name = "pyproj", version = "3.7.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pyproj", version = "3.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -498,6 +498,7 @@ dependencies = [
 dev = [
     { name = "fastapi" },
     { name = "geoalchemy2" },
+    { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-openai" },
     { name = "mcp", extra = ["cli"] },
@@ -526,8 +527,9 @@ requires-dist = [
     { name = "geoalchemy2", marker = "extra == 'postgis'", specifier = ">=0.15" },
     { name = "geojson", specifier = ">=3.2" },
     { name = "geopandas", specifier = ">=1.1" },
-    { name = "langchain", specifier = ">=1.2" },
+    { name = "langchain", marker = "extra == 'dev'", specifier = ">=1.2" },
     { name = "langchain-anthropic", marker = "extra == 'dev'", specifier = ">=1.5.6" },
+    { name = "langchain-core", specifier = ">=1.2" },
     { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=1.1.14" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'dev'", specifier = ">=1.27.0" },
     { name = "pdoc", marker = "extra == 'dev'", specifier = ">=14.0" },

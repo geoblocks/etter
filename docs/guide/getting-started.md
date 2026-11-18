@@ -42,6 +42,12 @@ sequenceDiagram
 pip install etter
 ```
 
+etter depends on `langchain-core` only, not on a model provider. Install the provider you use, and `langchain` for `init_chat_model` as in the examples below:
+
+```bash
+pip install langchain langchain-openai
+```
+
 With PostGIS datasource support:
 
 ```bash
