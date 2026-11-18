@@ -162,3 +162,5 @@ parser.get_available_relations(category="directional")
 # Description of a specific relation
 parser.describe_relation("on_shores_of")
 ```
+
+If your own code handles relations itself, branch on `geo_query.spatial_relation.category` (`containment`, `buffer`, `directional` or `clipping`) rather than on a list of relation names: a name list falls behind as relations are added or registered, while every relation has one of these four categories.

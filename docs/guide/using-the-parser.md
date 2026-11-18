@@ -130,3 +130,39 @@ parser = GeoFilterParser(llm=llm, include_examples=False)
 ```
 
 This shortens the prompt, and so the token cost of each call, but gives the LLM less guidance; keep the examples unless you have measured that your model parses your queries correctly without them.
+
+## Testing Without an LLM
+
+Code downstream of the parser only needs a `GeoQuery`, and that is a Pydantic model you can build directly. Build real ones in your tests rather than stand-ins (`MagicMock`, `SimpleNamespace`): a stand-in accepts any attribute, so a test keeps passing when your code reads a field that does not exist.
+
+```python
+from etter import BufferConfig, ConfidenceScore, GeoQuery, ReferenceLocation, SpatialRelation
+
+geo_query = GeoQuery(
+    spatial_relation=SpatialRelation(relation="north_of", category="directional", explicit_distance=5000),
+    reference_location=ReferenceLocation(name="Lausanne", type="city"),
+    buffer_config=BufferConfig(distance_m=5000, buffer_from="center", inferred=False),
+    confidence_breakdown=ConfidenceScore(overall=0.9, location_confidence=0.95, relation_confidence=0.85),
+)
+```
+
+To run your code through `GeoFilterParser` itself (its validation, warnings and exceptions included), give it an LLM stand-in that returns that query. The parser calls `with_structured_output` once, then `invoke` (or `ainvoke`) for each query:
+
+```python
+class FakeLLM:
+    def __init__(self, result):
+        self.result = result
+
+    def with_structured_output(self, schema, **kwargs):
+        return self
+
+    def invoke(self, messages):
+        return self.result
+
+    async def ainvoke(self, messages):
+        return self.result
+
+
+parser = GeoFilterParser(llm=FakeLLM(geo_query))
+assert parser.parse("5 km north of Lausanne").spatial_relation.relation == "north_of"
+```
