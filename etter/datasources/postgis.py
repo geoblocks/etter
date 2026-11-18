@@ -19,7 +19,7 @@ encodes it in the URL (e.g. ``postgresql+psycopg2://...``).
 
 Requires the optional ``[postgis]`` extras:
     pip install etter[postgis]
-which pulls in ``sqlalchemy`` and ``geoalchemy2``.
+which pulls in ``sqlalchemy``.
 """
 
 from __future__ import annotations

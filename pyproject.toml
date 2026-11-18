@@ -41,7 +41,6 @@ Changelog     = "https://github.com/geoblocks/etter/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 postgis = [
     "sqlalchemy>=2.0",
-    "geoalchemy2>=0.15",
 ]
 dev = [
     "langchain>=1.2",
@@ -61,6 +60,7 @@ dev = [
     # PostGIS integration tests
     "testcontainers[postgres]>=4.14.2",
     "psycopg2-binary>=2.9",
+    "geoalchemy2>=0.15",  # geopandas to_postgis() in test fixtures
     "etter[postgis]",
 ]
 

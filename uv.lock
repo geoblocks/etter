@@ -516,7 +516,6 @@ dev = [
     { name = "uvicorn" },
 ]
 postgis = [
-    { name = "geoalchemy2" },
     { name = "sqlalchemy" },
 ]
 
@@ -524,7 +523,7 @@ postgis = [
 requires-dist = [
     { name = "etter", extras = ["postgis"], marker = "extra == 'dev'" },
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.135" },
-    { name = "geoalchemy2", marker = "extra == 'postgis'", specifier = ">=0.15" },
+    { name = "geoalchemy2", marker = "extra == 'dev'", specifier = ">=0.15" },
     { name = "geojson", specifier = ">=3.2" },
     { name = "geopandas", specifier = ">=1.1" },
     { name = "langchain", marker = "extra == 'dev'", specifier = ">=1.2" },
