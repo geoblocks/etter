@@ -93,6 +93,20 @@ area = apply_spatial_relation(
 
 `search` returns candidates ranked by relevance; picking the first one is the simplest strategy, but you can also let the user choose. Passing `type` filters the candidates, so if the LLM inferred the wrong type the list can be empty — retry without it (see [Type System](./datasources#type-system)). If one place is split across several records, pass the list of their geometries instead — they are unioned before the relation is applied.
 
+The datasource is optional. `apply_spatial_relation` takes any GeoJSON geometry in WGS84, so if your application already resolves place names (your own gazetteer, a geocoding API, a database lookup), hand its geometry over and let etter build the search area:
+
+```python
+from shapely.geometry import mapping
+
+lausanne = my_gazetteer.lookup(geo_query.reference_location.name)  # a shapely geometry
+
+area = apply_spatial_relation(
+    mapping(lausanne),
+    geo_query.spatial_relation,
+    geo_query.buffer_config,
+)
+```
+
 Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `ST_GeomFromText(:area, 4326)` in PostGIS). See [Spatial Relations](./spatial-relations#output-geometry-format).
 
 ## Understanding the Result
