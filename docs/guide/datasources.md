@@ -4,6 +4,14 @@ A datasource resolves a location name (e.g. `"Lausanne"`) to a geometry. etter s
 
 All datasources implement the [`GeoDataSource`](../api/etter.html#GeoDataSource) protocol — no inheritance required.
 
+The file-backed datasources (SwissNames3D, SwissBoundaries3D and IGN BD-CARTO) read their data with geopandas, which is not installed with etter. Install the extra to use them:
+
+```bash
+pip install "etter[files]"
+```
+
+Without it, creating one raises an `ImportError` naming the extra.
+
 ## SwissNames3D
 
 Wraps the [swisstopo SwissNames3D](https://www.swisstopo.admin.ch/en/landscape-model-swissnames3d) dataset (Shapefile/GDB). Covers Switzerland with ~80 geographic feature types.

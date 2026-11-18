@@ -59,6 +59,12 @@ etter depends on `langchain-core` only. Install your model provider, and `langch
 pip install langchain langchain-openai
 ```
 
+With the file-backed datasources (SwissNames3D, swissBOUNDARIES3D, IGN BD-CARTO), which need geopandas:
+
+```bash
+pip install "etter[files]"
+```
+
 With PostGIS datasource support:
 
 ```bash

@@ -48,6 +48,12 @@ etter depends on `langchain-core` only, not on a model provider. Install the pro
 pip install langchain langchain-openai
 ```
 
+With the file-backed datasources (SwissNames3D, swissBOUNDARIES3D, IGN BD-CARTO), which need geopandas:
+
+```bash
+pip install "etter[files]"
+```
+
 With PostGIS datasource support:
 
 ```bash
@@ -78,7 +84,7 @@ See [`GeoFilterParser`](../api/etter.html#GeoFilterParser) for the full construc
 
 ## From Query to Search Area
 
-`parse` only tells you *what* the filter is. To get a geometry you can query with, resolve the reference location in a [datasource](./datasources) and apply the spatial relation to it:
+`parse` only tells you *what* the filter is. To get a geometry you can query with, resolve the reference location in a [datasource](./datasources) and apply the spatial relation to it. This example uses `SwissNames3DSource`, which needs the `files` extra:
 
 ```python
 from etter import SwissNames3DSource, apply_spatial_relation

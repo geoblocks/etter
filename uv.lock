@@ -485,12 +485,10 @@ version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "geojson" },
-    { name = "geopandas" },
     { name = "langchain-core" },
     { name = "pydantic" },
     { name = "pyproj", version = "3.7.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pyproj", version = "3.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "rapidfuzz" },
     { name = "shapely" },
 ]
 
@@ -498,6 +496,7 @@ dependencies = [
 dev = [
     { name = "fastapi" },
     { name = "geoalchemy2" },
+    { name = "geopandas" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-openai" },
@@ -507,6 +506,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "python-dotenv" },
+    { name = "rapidfuzz" },
     { name = "rich" },
     { name = "ruff" },
     { name = "sqlalchemy" },
@@ -515,17 +515,21 @@ dev = [
     { name = "ty" },
     { name = "uvicorn" },
 ]
+files = [
+    { name = "geopandas" },
+    { name = "rapidfuzz" },
+]
 postgis = [
     { name = "sqlalchemy" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "etter", extras = ["postgis"], marker = "extra == 'dev'" },
+    { name = "etter", extras = ["postgis", "files"], marker = "extra == 'dev'" },
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.135" },
     { name = "geoalchemy2", marker = "extra == 'dev'", specifier = ">=0.15" },
     { name = "geojson", specifier = ">=3.2" },
-    { name = "geopandas", specifier = ">=1.1" },
+    { name = "geopandas", marker = "extra == 'files'", specifier = ">=1.1" },
     { name = "langchain", marker = "extra == 'dev'", specifier = ">=1.2" },
     { name = "langchain-anthropic", marker = "extra == 'dev'", specifier = ">=1.5.6" },
     { name = "langchain-core", specifier = ">=1.2" },
@@ -538,7 +542,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "rapidfuzz", specifier = ">=3.14" },
+    { name = "rapidfuzz", marker = "extra == 'files'", specifier = ">=3.14" },
     { name = "rich", marker = "extra == 'dev'", specifier = ">=15.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15" },
     { name = "shapely", specifier = ">=2.1.2" },
@@ -548,7 +552,7 @@ requires-dist = [
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.105" },
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.44.0" },
 ]
-provides-extras = ["postgis", "dev"]
+provides-extras = ["files", "postgis", "dev"]
 
 [[package]]
 name = "exceptiongroup"

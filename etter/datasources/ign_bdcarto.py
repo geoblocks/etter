@@ -26,18 +26,21 @@ Expected data layout (produced by scripts/extract_bdcarto.sh):
         parc_ou_reserve.gpkg
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-import geopandas as gpd
-import pandas as pd
 from geojson import Feature
 from shapely.geometry import mapping
 
-from .geo_dataframe_source import GeoDataFrameSource
-from .location_types import TypeMap, get_matching_types, merge_segments, to_serializable
+from .geo_dataframe_source import GeoDataFrameSource, _is_missing, _require_files_extra, to_serializable
+from .location_types import TypeMap, get_matching_types, merge_segments
 from .text import normalize_name
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +219,8 @@ def _index_keys(name: str) -> list[str]:
 
 def _assign_type_col(gdf: gpd.GeoDataFrame, cfg: dict[str, Any]) -> None:
     """Assign the _TYPE_COL column using vectorized operations."""
+    import pandas as pd
+
     if cfg.get("commune_flags"):
         flags = ["capitale_d_etat", "chef_lieu_de_region", "chef_lieu_de_departement", "chef_lieu_d_arrondissement"]
         present = [f for f in flags if f in gdf.columns]
@@ -260,6 +265,7 @@ class IGNBDCartoSource(GeoDataFrameSource):
     """
 
     def __init__(self, data_path: str | Path) -> None:
+        _require_files_extra()
         self._data_path = Path(data_path)
         self._gdf: gpd.GeoDataFrame | None = None
         self._name_index: dict[str, list[int]] = {}
@@ -276,6 +282,9 @@ class IGNBDCartoSource(GeoDataFrameSource):
 
     def _load_from_file(self, path: Path) -> gpd.GeoDataFrame:
         """Load from a GeoJSON fixture file. Features must include a ``_layer`` column."""
+        import geopandas as gpd
+        import pandas as pd
+
         full_gdf = gpd.read_file(str(path))
         if "_layer" not in full_gdf.columns:
             raise ValueError(f"GeoJSON fixture {path} must include a '_layer' column")
@@ -301,6 +310,9 @@ class IGNBDCartoSource(GeoDataFrameSource):
 
     def _load_from_directory(self) -> gpd.GeoDataFrame:
         """Load and concatenate all configured layers from the data directory."""
+        import geopandas as gpd
+        import pandas as pd
+
         gdfs: list[gpd.GeoDataFrame] = []
 
         for layer_name, cfg in _LAYER_CONFIGS.items():
@@ -351,7 +363,7 @@ class IGNBDCartoSource(GeoDataFrameSource):
         """Return a row's normalized type without building its full Feature (geometry, etc.)."""
         assert self._gdf is not None
         row = self._gdf.iloc[idx]
-        return str(row[_TYPE_COL]) if pd.notna(row.get(_TYPE_COL)) else "unknown"
+        return str(row[_TYPE_COL]) if not _is_missing(row.get(_TYPE_COL)) else "unknown"
 
     def _row_to_feature(self, idx: int) -> Feature:
         """Convert a GeoDataFrame row to a GeoJSON Feature dict (WGS84)."""
@@ -360,7 +372,7 @@ class IGNBDCartoSource(GeoDataFrameSource):
 
         name = str(row[_NAME_COL])
         normalized_type = self._row_type(idx)
-        feature_id = str(row["cleabs"]) if pd.notna(row.get("cleabs")) else str(idx)
+        feature_id = str(row["cleabs"]) if not _is_missing(row.get("cleabs")) else str(idx)
 
         geom = row.geometry
         if geom is None or geom.is_empty:
