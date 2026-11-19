@@ -10,7 +10,7 @@ import math
 
 from pyproj import Geod, Transformer
 from shapely import clip_by_rect, transform
-from shapely.geometry import MultiLineString, Point
+from shapely.geometry import MultiLineString
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.linestring import LineString
 from shapely.geometry.polygon import Polygon
@@ -239,33 +239,46 @@ def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> BaseGeometry:
     - Ring buffer: excludes the original geometry from the buffer
     - Buffer from center vs boundary
 
-    Projects the geometry to a local azimuthal equidistant CRS so that the
-    buffer distance is in metres (accurate), then reprojects the result back
-    to WGS84.
+    A buffer from the center is a geodesic circle around the centroid. Other
+    buffers project the geometry to a local azimuthal equidistant CRS so that
+    the buffer distance is in metres (accurate), then reproject the result
+    back to WGS84.
     """
-    cx, cy = geom.centroid.x, geom.centroid.y
-    to_local, to_wgs84 = _local_transformers(cx, cy)
+    centroid = geom.centroid
 
     if config.buffer_from == "center":
-        # The local CRS is centred on the centroid: buffer its origin, without projecting the outline.
         # ring_only is not allowed with buffer_from="center" (see BufferConfig).
-        buffered_local = Point(0, 0).buffer(abs(config.distance_m))
+        if config.distance_m == 0:
+            return geom
+        return _geodesic_circle(centroid.x, centroid.y, abs(config.distance_m))
+
+    to_local, to_wgs84 = _local_transformers(centroid.x, centroid.y)
+    geom_local = transform(geom, to_local.transform, include_z=None, interleaved=False)
+
+    if config.side is not None:
+        buffered_local = _one_sided_buffer(geom_local, abs(config.distance_m), config.side)
     else:
-        geom_local = transform(geom, to_local.transform, include_z=None, interleaved=False)
+        buffered_local = geom_local.buffer(config.distance_m)
 
-        if config.side is not None:
-            buffered_local = _one_sided_buffer(geom_local, abs(config.distance_m), config.side)
-        else:
-            buffered_local = geom_local.buffer(config.distance_m)
-
-        # Ring buffer: subtract original geometry (in local CRS)
-        if config.ring_only and config.distance_m > 0:
-            buffered_local = buffered_local.difference(geom_local)
+    # Ring buffer: subtract original geometry (in local CRS)
+    if config.ring_only and config.distance_m > 0:
+        buffered_local = buffered_local.difference(geom_local)
 
     if buffered_local.is_empty:
         return geom  # Fallback if erosion eliminates geometry
 
     return transform(buffered_local, to_wgs84.transform, include_z=None, interleaved=False)
+
+
+def _geodesic_circle(lon: float, lat: float, radius_m: float, num_points: int = 64) -> Polygon:
+    """Return the polygon whose vertices lie ``radius_m`` from (lon, lat) along geodesics.
+
+    Built with one vectorised ``Geod.fwd`` call, like directional sectors, instead of
+    projecting to a local CRS: creating the two pyproj transformers takes about 10 ms.
+    """
+    azimuths = [360 * i / num_points for i in range(num_points)]
+    lons, lats, _ = _GEOD.fwd([lon] * num_points, [lat] * num_points, azimuths, [radius_m] * num_points)
+    return Polygon(zip(lons, lats))
 
 
 def _collect_line_parts(geom: BaseGeometry) -> list[LineString]:

@@ -365,3 +365,18 @@ def test_center_buffer_is_centred_on_centroid():
     # 10 km across: about 0.09° of latitude and 0.125° of longitude at 46°N.
     assert (maxy - miny) * 111_320 == pytest.approx(10_000, rel=0.01)
     assert (maxx - minx) * 111_320 * 0.6947 == pytest.approx(10_000, rel=0.01)
+
+
+def test_center_buffer_vertices_at_radius():
+    """Every vertex of a buffer from the center is the requested distance from the centroid."""
+    polygon = Polygon([(7.0, 46.0), (7.4, 46.0), (7.4, 46.1), (7.0, 46.1)])
+    relation = SpatialRelation(relation="near", category="buffer")
+    config = BufferConfig(distance_m=5000, buffer_from="center", inferred=False)
+
+    result = shape(apply_spatial_relation(mapping(polygon), relation, config))
+
+    centre = polygon.centroid
+    geod = Geod(ellps="WGS84")
+    for lon, lat in result.exterior.coords:
+        _, _, distance = geod.inv(centre.x, centre.y, lon, lat)
+        assert distance == pytest.approx(5000, abs=1)
