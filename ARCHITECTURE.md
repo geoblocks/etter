@@ -76,10 +76,11 @@ Here's what happens when you do a query in the demo:
    - Confidence: 1.0 (exact match)
    ↓
 4. SPATIAL OPERATIONS (Layer 3)
-   - Geodesic area of Lausanne geometry → bracket → radius (e.g. 5 000 m for a city polygon)
+   - Radius: a polygon's geodesic area picks a bracket (e.g. 5 000 m for a city polygon);
+     a point has no area, so it keeps the 10 km default
    - Centroid: (6.63, 46.52)
    - Direction: North (0°)
-   - Creates: 90° sector polygon extending ~5km north
+   - Creates: 90° sector polygon extending ~10km north
    ↓
 5. OUTPUT: GeoJSON FeatureCollection
    {
@@ -148,16 +149,16 @@ Transforms reference geometries into search areas.
   - **Buffer**: Positive (expand), Negative (erode), Ring (donut)
   - **Directional**: Angular sector wedges (e.g., North = 90° wedge)
   - **Clipping**: Bbox half-plane intersection (e.g., northern half of a country)
-- **Area-based distance inference**: When `buffer_config.inferred=True` (no explicit distance in the query), `apply_spatial_relation` computes the geodesic area of the reference geometry (via `pyproj.Geod`) and selects a distance from area-based brackets:
+- **Area-based distance inference**: When `buffer_config.inferred=True` (no explicit distance in the query) and the relation's `RelationConfig.scale_with_area` is set (`near`, `in_the_heart_of`, directional), `apply_spatial_relation` computes the geodesic area of the reference geometry (via `pyproj.Geod`) and selects a distance from area-based brackets:
 
   | Geometry area | Proximity default | Erosion default |
   |---|---|---|
-  | < 1 km² (point, station) | 500 m | −200 m |
+  | < 1 km² (station, pond) | 500 m | −200 m |
   | 1–50 km² (town, small lake) | 1 500 m | −500 m |
   | 50–500 km² (city, medium region) | 5 000 m | −1 000 m |
   | ≥ 500 km² (canton, country) | 15 000 m | −2 000 m |
 
-  If `explicit_distance` is set (user stated "within 5km", "30 min walk", etc.), it always takes precedence.
+  If `explicit_distance` is set (user stated "within 5km", "30 min walk", etc.), it always takes precedence. Fixed-width relations (`around`, `along`, banks, `on_shores_of`, `bordering`) and point or line references keep the relation's default distance.
 - **Technology**: Uses `shapely` + `pyproj` internally, input is WGS84 GeoJSON; output format is configurable (`"geojson"` dict, `"wkt"` string, or `"wkb"` hex string).
 
 ---
@@ -199,9 +200,9 @@ Standard GeoJSON dictionary structure:
 | Category (`category=`) | Relations | Behavior |
 |------------------------|-----------|----------|
 | **`containment`** | `in` | Exact geometry match |
-| **`buffer`** | `near`, `around`, `along` | Circular/Linear buffer; distance inferred from geometry area when not explicit |
+| **`buffer`** | `near`, `around`, `along` | Circular/Linear buffer; for `near`, distance inferred from geometry area when not explicit |
 | **`buffer`** (one-sided) | `left_bank`, `right_bank` | Buffer on one side of a linear feature relative to flow direction |
-| **`buffer`** (ring) | `on_shores_of`, `bordering` | Buffer - Original (Donut); distance inferred from geometry area when not explicit |
+| **`buffer`** (ring) | `on_shores_of`, `bordering` | Buffer - Original (Donut); fixed default width when not explicit |
 | **`buffer`** (erosion) | `in_the_heart_of` | Negative buffer (shrink); erosion depth inferred from geometry area when not explicit |
 | **`directional`** | `north_of`, `south_of`, `east_of`, `west_of`, `northeast_of`, `southeast_of`, `southwest_of`, `northwest_of` | 90° Sector Wedge |
 | **`clipping`** | `northern_part_of`, `southern_part_of`, `eastern_part_of`, `western_part_of` | Bbox half-plane intersection (sub-area of reference) |
