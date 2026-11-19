@@ -107,7 +107,7 @@ area = apply_spatial_relation(
 )
 ```
 
-Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `ST_GeomFromText(:area, 4326)` in PostGIS). See [Spatial Relations](./spatial-relations#output-geometry-format).
+Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `(SELECT ST_GeomFromText(:area, 4326))` in PostGIS). See [Using the area in SQL](./spatial-relations#using-the-area-in-sql).
 
 ## Understanding the Result
 
