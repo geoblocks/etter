@@ -67,7 +67,7 @@ The 10 km default only applies until the geometry is known: when the query state
 
 The "Default distance" values above are what the parser writes into `buffer_config.distance_m` when the query states no distance; the config is then flagged `inferred=True`. When the query does state a distance ("within 5km", "30 min walk"), `SpatialRelation.explicit_distance` overrides the default and the config is flagged `inferred=False`.
 
-At geometry time, `apply_spatial_relation()` replaces an inferred default for `near`, `in_the_heart_of` and the directional relations: it computes the geodesic area of the reference geometry (via `pyproj.Geod`) and picks a distance from area-based brackets instead. An explicit distance is never changed:
+At geometry time, `apply_spatial_relation()` replaces an inferred default for `near`, `in_the_heart_of` and the directional relations: it estimates the area of the reference geometry (its area in square degrees scaled to metres at its latitude, within 0.2% of the geodesic area for Swiss cantons) and picks a distance from area-based brackets instead. An explicit distance is never changed:
 
 | Geometry area | Proximity default | Erosion default |
 |---|---|---|
@@ -115,9 +115,9 @@ area = apply_spatial_relation(
 
 See [`SpatialRelationConfig`](../api/etter.html#SpatialRelationConfig) and [`RelationConfig`](../api/etter.html#RelationConfig) for all available options.
 
-## Output Geometry Format
+## Geometry Formats
 
-By default `apply_spatial_relation()` returns a GeoJSON geometry dict. Use the `geometry_format` parameter to request WKT or WKB instead:
+`apply_spatial_relation()` takes the reference geometry, in WGS84, as a GeoJSON dict, a WKT or hex-encoded WKB string, WKB as `bytes`, `bytearray` or `memoryview` (what database drivers return for a binary column) or a shapely geometry, alone or in a list. By default it returns a GeoJSON geometry dict. Use the `geometry_format` parameter to request WKT or WKB instead:
 
 ```python
 from etter import apply_spatial_relation
@@ -153,6 +153,13 @@ feature_wkt = convert_feature_geometry(feature, "wkt")
 ```
 
 ### Using the area in SQL
+
+If the reference geometry comes from your database, fetch it as WKB (`ST_AsBinary(geometry)`) and ask for WKB back: on a large outline (a canton, 24,000 vertices), GeoJSON parsing and serialisation take most of the time, about 30 ms against 2 ms in WKB for `in`.
+
+```python
+row = conn.execute(text("SELECT ST_AsBinary(geometry) FROM canton WHERE name = :name"), {"name": ref.name}).one()
+area = apply_spatial_relation(row[0], geo_query.spatial_relation, geo_query.buffer_config, geometry_format="wkb")
+```
 
 Pass the area as a bound parameter and parse it in a scalar subquery, so the database parses it once per query:
 

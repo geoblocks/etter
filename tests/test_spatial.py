@@ -3,10 +3,11 @@ Tests for spatial operations module.
 """
 
 import pytest
+from pyproj import Geod
 from shapely.geometry import LineString, Point, Polygon, mapping, shape
 
 from etter.models import BufferConfig, SpatialRelation
-from etter.spatial import apply_spatial_relation
+from etter.spatial import _area_m2, apply_spatial_relation
 from etter.spatial_config import SpatialRelationConfig
 
 # About 7,600 km² at 47°N: above the largest area bracket.
@@ -335,3 +336,47 @@ def test_containment_point_fallback_is_500_m() -> None:
     minx, _, maxx, _ = result.bounds
     # 1,000 m across at 47°N, where a degree of longitude is about 75.9 km.
     assert (maxx - minx) * 75_900 == pytest.approx(1_000, rel=0.02)
+
+
+@pytest.mark.parametrize(
+    "polygon",
+    [
+        Polygon([(6.0, 46.0), (6.1, 46.0), (6.1, 46.05), (6.0, 46.05)]),  # ~40 km² at 46°N
+        Polygon([(8.5, 46.2), (10.5, 46.2), (10.5, 47.0), (8.5, 47.0)]),  # ~13,500 km², canton-sized
+        Polygon([(20.0, 60.0), (25.0, 60.0), (25.0, 64.0), (20.0, 64.0)]),  # ~100,000 km² at 60-64°N
+    ],
+)
+def test_area_estimate_close_to_geodesic(polygon: Polygon) -> None:
+    """The area only picks a distance bracket (10 to 50 times apart): the cheap estimate stays within 1%."""
+    geodesic = abs(Geod(ellps="WGS84").geometry_area_perimeter(polygon)[0])
+    assert _area_m2(polygon) == pytest.approx(geodesic, rel=0.01)
+
+
+def test_center_buffer_is_centred_on_centroid():
+    """A buffer from the center is a circle around the reference's centroid, whatever its outline."""
+    polygon = Polygon([(7.0, 46.0), (7.4, 46.0), (7.4, 46.1), (7.0, 46.1)])
+    relation = SpatialRelation(relation="near", category="buffer")
+    config = BufferConfig(distance_m=5000, buffer_from="center", inferred=False)
+
+    result = shape(apply_spatial_relation(mapping(polygon), relation, config))
+
+    assert result.centroid.distance(polygon.centroid) < 1e-4
+    minx, miny, maxx, maxy = result.bounds
+    # 10 km across: about 0.09° of latitude and 0.125° of longitude at 46°N.
+    assert (maxy - miny) * 111_320 == pytest.approx(10_000, rel=0.01)
+    assert (maxx - minx) * 111_320 * 0.6947 == pytest.approx(10_000, rel=0.01)
+
+
+def test_center_buffer_vertices_at_radius():
+    """Every vertex of a buffer from the center is the requested distance from the centroid."""
+    polygon = Polygon([(7.0, 46.0), (7.4, 46.0), (7.4, 46.1), (7.0, 46.1)])
+    relation = SpatialRelation(relation="near", category="buffer")
+    config = BufferConfig(distance_m=5000, buffer_from="center", inferred=False)
+
+    result = shape(apply_spatial_relation(mapping(polygon), relation, config))
+
+    centre = polygon.centroid
+    geod = Geod(ellps="WGS84")
+    for lon, lat in result.exterior.coords:
+        _, _, distance = geod.inv(centre.x, centre.y, lon, lat)
+        assert distance == pytest.approx(5000, abs=1)
