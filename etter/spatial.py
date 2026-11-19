@@ -143,6 +143,9 @@ def apply_spatial_relation(
     distance is refined from the reference polygon's area so that small
     features receive small buffers and large regions receive large ones.
     Other relations, and point or line references, keep the default distance.
+    The sized distance is written into ``buffer_config.distance_m`` in place, so
+    the caller can read it back: pass a copy (``buffer_config.model_copy()``)
+    when the config is shared or reused across calls.
 
     Args:
         geometry: Reference geometry in WGS84, or a non-empty list of them: a GeoJSON dict,
