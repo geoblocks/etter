@@ -76,7 +76,7 @@ Here's what happens when you do a query in the demo:
    - Confidence: 1.0 (exact match)
    ↓
 4. SPATIAL OPERATIONS (Layer 3)
-   - Radius: a polygon's geodesic area picks a bracket (e.g. 5 000 m for a city polygon);
+   - Radius: a polygon's area picks a bracket (e.g. 5 000 m for a city polygon);
      a point has no area, so it keeps the 10 km default
    - Centroid: (6.63, 46.52)
    - Direction: North (0°)
@@ -149,7 +149,7 @@ Transforms reference geometries into search areas.
   - **Buffer**: Positive (expand), Negative (erode), Ring (donut)
   - **Directional**: Angular sector wedges (e.g., North = 90° wedge)
   - **Clipping**: Bbox half-plane intersection (e.g., northern half of a country)
-- **Area-based distance inference**: When `buffer_config.inferred=True` (no explicit distance in the query) and the relation's `RelationConfig.scale_with_area` is set (`near`, `in_the_heart_of`, directional), `apply_spatial_relation` computes the geodesic area of the reference geometry (via `pyproj.Geod`) and selects a distance from area-based brackets:
+- **Area-based distance inference**: When `buffer_config.inferred=True` (no explicit distance in the query) and the relation's `RelationConfig.scale_with_area` is set (`near`, `in_the_heart_of`, directional), `apply_spatial_relation` estimates the area of the reference geometry (planar area in square degrees scaled to metres at its latitude) and selects a distance from area-based brackets:
 
   | Geometry area | Proximity default | Erosion default |
   |---|---|---|

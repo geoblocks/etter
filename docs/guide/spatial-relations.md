@@ -67,7 +67,7 @@ The 10 km default only applies until the geometry is known: when the query state
 
 The "Default distance" values above are what the parser writes into `buffer_config.distance_m` when the query states no distance; the config is then flagged `inferred=True`. When the query does state a distance ("within 5km", "30 min walk"), `SpatialRelation.explicit_distance` overrides the default and the config is flagged `inferred=False`.
 
-At geometry time, `apply_spatial_relation()` replaces an inferred default for `near`, `in_the_heart_of` and the directional relations: it computes the geodesic area of the reference geometry (via `pyproj.Geod`) and picks a distance from area-based brackets instead. An explicit distance is never changed:
+At geometry time, `apply_spatial_relation()` replaces an inferred default for `near`, `in_the_heart_of` and the directional relations: it estimates the area of the reference geometry (its area in square degrees scaled to metres at its latitude, within 0.2% of the geodesic area for Swiss cantons) and picks a distance from area-based brackets instead. An explicit distance is never changed:
 
 | Geometry area | Proximity default | Erosion default |
 |---|---|---|

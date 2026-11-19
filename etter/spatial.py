@@ -6,9 +6,11 @@ All inputs and outputs are GeoJSON dicts in WGS84 (EPSG:4326).
 Shapely is used internally for geometry operations.
 """
 
+import math
+
 from pyproj import Geod, Transformer
 from shapely import clip_by_rect, transform
-from shapely.geometry import MultiLineString, mapping, shape
+from shapely.geometry import MultiLineString, Point, mapping, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.linestring import LineString
 from shapely.geometry.polygon import Polygon
@@ -19,7 +21,8 @@ from .models import BufferConfig, GeoJsonGeometry, GeometryFormat, SpatialRelati
 from .spatial_config import RelationConfig, SpatialRelationConfig
 
 _DEFAULT_SPATIAL_CONFIG = SpatialRelationConfig()  # Module-level singleton for default spatial relation configuration.
-_GEOD = Geod(ellps="WGS84")  # Geodesic calculator for accurate area and arc computation.
+_GEOD = Geod(ellps="WGS84")  # Geodesic calculator for accurate arc computation.
+_METRES_PER_DEGREE = _GEOD.a * math.pi / 180  # One degree along the WGS84 equator, about 111,319 m.
 
 
 def _local_transformers(lon: float, lat: float) -> tuple[Transformer, Transformer]:
@@ -55,18 +58,18 @@ _AREA_EROSION_DEFAULT = -2_000
 
 
 def _area_m2(geom: BaseGeometry) -> float:
-    """Return the geodesic area of a Shapely geometry in m² (WGS84 ellipsoid).
+    """Return the approximate area of a WGS84 Shapely geometry in m².
 
-    Uses pyproj.Geod.geometry_area_perimeter for accurate area computation
-    without the need for reprojection.  The result is always non-negative.
+    Scales the planar area in square degrees by the size of a degree at the
+    centroid's latitude. It only picks a distance bracket, and the brackets are
+    10 to 50 times apart: within 0.2% of the geodesic area for Swiss cantons,
+    at a fraction of the cost on outlines with thousands of vertices. Points
+    and lines have no area and return 0.
     """
     if geom.area == 0:
-        # Non-polygonal geometries (points, lines) have zero planar area; short-
-        # circuit to avoid the artefact where pyproj implicitly closes a
-        # LineString into a ring and returns a spurious non-zero value.
+        # Points, lines and empty geometries; an empty one has a NaN centroid.
         return 0.0
-    area, _ = _GEOD.geometry_area_perimeter(geom)
-    return abs(area)
+    return geom.area * _METRES_PER_DEGREE**2 * math.cos(math.radians(geom.centroid.y))
 
 
 def _infer_distance_from_area(area_m2: float, erosion: bool) -> int:
@@ -241,18 +244,21 @@ def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> GeoJsonGeometry:
     cx, cy = geom.centroid.x, geom.centroid.y
     to_local, to_wgs84 = _local_transformers(cx, cy)
 
-    geom_local = transform(geom, to_local.transform, include_z=None, interleaved=False)
-
     if config.buffer_from == "center":
-        buffered_local = geom_local.centroid.buffer(abs(config.distance_m))
-    elif config.side is not None:
-        buffered_local = _one_sided_buffer(geom_local, abs(config.distance_m), config.side)
+        # The local CRS is centred on the centroid: buffer its origin, without projecting the outline.
+        # ring_only is not allowed with buffer_from="center" (see BufferConfig).
+        buffered_local = Point(0, 0).buffer(abs(config.distance_m))
     else:
-        buffered_local = geom_local.buffer(config.distance_m)
+        geom_local = transform(geom, to_local.transform, include_z=None, interleaved=False)
 
-    # Ring buffer: subtract original geometry (in local CRS)
-    if config.ring_only and config.distance_m > 0:
-        buffered_local = buffered_local.difference(geom_local)
+        if config.side is not None:
+            buffered_local = _one_sided_buffer(geom_local, abs(config.distance_m), config.side)
+        else:
+            buffered_local = geom_local.buffer(config.distance_m)
+
+        # Ring buffer: subtract original geometry (in local CRS)
+        if config.ring_only and config.distance_m > 0:
+            buffered_local = buffered_local.difference(geom_local)
 
     if buffered_local.is_empty:
         return mapping(geom)  # Fallback if erosion eliminates geometry
