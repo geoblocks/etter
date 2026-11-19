@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* langchain is no longer installed with etter. Code that uses langchain directly, such as init_chat_model, must install it.
+* etter no longer installs langchain, geopandas, pandas or rapidfuzz. Install `langchain` to use `init_chat_model`, and `etter[files]` to use SwissNames3DSource, SwissBoundaries3DSource or IGNBDCartoSource; code that imports geopandas or pandas itself must declare them.
 
 ### Features
 
