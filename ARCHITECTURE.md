@@ -159,7 +159,7 @@ Transforms reference geometries into search areas.
   | ≥ 500 km² (canton, country) | 15 000 m | −2 000 m |
 
   If `explicit_distance` is set (user stated "within 5km", "30 min walk", etc.), it always takes precedence. Fixed-width relations (`around`, `along`, banks, `on_shores_of`, `bordering`) and point or line references keep the relation's default distance.
-- **Technology**: Uses `shapely` + `pyproj` internally, input is a WGS84 geometry as a GeoJSON dict, WKT or WKB (string or bytes) or a shapely geometry; output format is configurable (`"geojson"` dict, `"wkt"` string, or `"wkb"` hex string).
+- **Technology**: Uses `shapely` + `pyproj` internally, input is a WGS84 geometry as a GeoJSON dict, WKT or WKB (string or bytes) or a shapely geometry; output format is configurable (`"geojson"` dict, `"wkt"` string, `"wkb"` hex string, or `"shapely"` geometry).
 
 ---
 
@@ -340,7 +340,7 @@ etter/
 ├── validators.py          # Validation pipeline
 ├── examples.py            # Few-shot examples for the parser
 ├── exceptions.py          # Exception hierarchy
-├── geometry_format.py     # Geometry format conversion (geojson/wkt/wkb)
+├── geometry_format.py     # Geometry format conversion (geojson/wkt/wkb/shapely)
 ├── datasources/           # Layer 2: Data Resolution
 │   ├── protocol.py        # GeoDataSource Protocol
 │   ├── location_types.py  # Type hierarchy & fuzzy matching

@@ -14,7 +14,7 @@ __all__ = ["Feature", "GeoJsonGeometry"]
 ConfidenceLevel = Annotated[float, Field(ge=0.0, le=1.0, description="Confidence score between 0 and 1")]
 
 RelationCategory = Literal["containment", "buffer", "directional", "clipping"]
-GeometryFormat = Literal["geojson", "wkt", "wkb"]
+GeometryFormat = Literal["geojson", "wkt", "wkb", "shapely"]
 
 
 class ConfidenceScore(BaseModel):

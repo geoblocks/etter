@@ -1,5 +1,5 @@
 """
-Read geometries given as GeoJSON, WKT, WKB or shapely, and write them as GeoJSON, WKT or WKB.
+Read geometries given as GeoJSON, WKT, WKB or shapely, and write them as GeoJSON, WKT, WKB or shapely.
 """
 
 from typing import TypeAlias
@@ -40,24 +40,28 @@ def parse_geometry(geometry: GeometryInput) -> BaseGeometry:
     return shape(geometry)
 
 
-def format_geometry(geometry: BaseGeometry, fmt: GeometryFormat) -> GeoJsonGeometry | str:
-    """Return a shapely geometry as a GeoJSON dict, a WKT string or a hex-encoded WKB string."""
+def format_geometry(geometry: BaseGeometry, fmt: GeometryFormat) -> GeoJsonGeometry | str | BaseGeometry:
+    """Return a shapely geometry as a GeoJSON dict, a WKT string, a hex-encoded WKB string or itself."""
+    if fmt == "shapely":
+        return geometry
     if fmt == "geojson":
         return mapping(geometry)
     if fmt == "wkt":
         return geometry.wkt
-    # Same uppercase hex as geometry.wkb_hex, encoded in Python: about 10 times faster on large outlines.
-    return shapely.to_wkb(geometry).hex().upper()
+    if fmt == "wkb":
+        # Same uppercase hex as geometry.wkb_hex, encoded in Python: about 10 times faster on large outlines.
+        return shapely.to_wkb(geometry).hex().upper()
+    raise ValueError(f"Unknown geometry format: {fmt!r}")
 
 
-def convert_geometry(geometry: GeoJsonGeometry, fmt: GeometryFormat) -> GeoJsonGeometry | str:
+def convert_geometry(geometry: GeoJsonGeometry, fmt: GeometryFormat) -> GeoJsonGeometry | str | BaseGeometry:
     """
     Convert a GeoJSON geometry dict to the requested format.
 
     Args:
         geometry: GeoJSON geometry dict (e.g. {"type": "Point", "coordinates": [...]})
         fmt: Target format — "geojson" returns the dict unchanged, "wkt" returns a WKT string,
-             "wkb" returns a hex-encoded WKB string.
+             "wkb" returns a hex-encoded WKB string, "shapely" a shapely geometry.
 
     Returns:
         The geometry in the requested format.
@@ -77,7 +81,8 @@ def convert_feature_geometry(feature: Feature, fmt: GeometryFormat) -> Feature |
 
     Returns:
         A new dict identical to the input except the "geometry" value is converted.
-        Returns a Feature when fmt is "geojson"; a plain dict otherwise (geometry becomes a string).
+        Returns a Feature when fmt is "geojson"; a plain dict otherwise (geometry becomes a string,
+        or a shapely geometry for "shapely").
     """
     if fmt == "geojson":
         return feature

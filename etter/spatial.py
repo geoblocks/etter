@@ -7,6 +7,7 @@ Shapely is used internally for geometry operations.
 """
 
 import math
+from typing import Literal, overload
 
 from pyproj import Geod, Transformer
 from shapely import clip_by_rect, transform
@@ -125,13 +126,55 @@ def _refine_buffer_config(
     return buffer_config
 
 
+@overload
+def apply_spatial_relation(
+    geometry: GeometryInput | list[GeometryInput],
+    relation: SpatialRelation,
+    buffer_config: BufferConfig | None = None,
+    spatial_config: SpatialRelationConfig | None = None,
+    geometry_format: Literal["geojson"] = "geojson",
+) -> GeoJsonGeometry: ...
+
+
+@overload
+def apply_spatial_relation(
+    geometry: GeometryInput | list[GeometryInput],
+    relation: SpatialRelation,
+    buffer_config: BufferConfig | None = None,
+    spatial_config: SpatialRelationConfig | None = None,
+    *,
+    geometry_format: Literal["wkt", "wkb"],
+) -> str: ...
+
+
+@overload
+def apply_spatial_relation(
+    geometry: GeometryInput | list[GeometryInput],
+    relation: SpatialRelation,
+    buffer_config: BufferConfig | None = None,
+    spatial_config: SpatialRelationConfig | None = None,
+    *,
+    geometry_format: Literal["shapely"],
+) -> BaseGeometry: ...
+
+
+@overload
 def apply_spatial_relation(
     geometry: GeometryInput | list[GeometryInput],
     relation: SpatialRelation,
     buffer_config: BufferConfig | None = None,
     spatial_config: SpatialRelationConfig | None = None,
     geometry_format: GeometryFormat = "geojson",
-) -> GeoJsonGeometry | str:
+) -> GeoJsonGeometry | str | BaseGeometry: ...
+
+
+def apply_spatial_relation(
+    geometry: GeometryInput | list[GeometryInput],
+    relation: SpatialRelation,
+    buffer_config: BufferConfig | None = None,
+    spatial_config: SpatialRelationConfig | None = None,
+    geometry_format: GeometryFormat = "geojson",
+) -> GeoJsonGeometry | str | BaseGeometry:
     """Transform one or more reference geometries according to a spatial relation.
 
     A list of geometries is unioned into one before the transformation, so that
@@ -154,7 +197,9 @@ def apply_spatial_relation(
         relation: Spatial relation to apply.
         buffer_config: Required for buffer/directional relations.
         spatial_config: Relation registry; defaults to the module-level singleton.
-        geometry_format: "geojson" (default), "wkt", or "wkb".
+        geometry_format: "geojson" (default), "wkt", "wkb", or "shapely". Ask for "shapely" to
+            write the area in more than one format, e.g. WKB for a query and GeoJSON for a
+            response, without parsing it again.
 
     Returns:
         Transformed geometry in the requested format.
