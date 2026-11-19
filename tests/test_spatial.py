@@ -170,6 +170,18 @@ def test_right_side_buffer():
     assert not result_shape.contains(Point(1, 0.5))  # North of line (left)
 
 
+def test_side_buffer_3d_line():
+    """A line with Z coordinates (e.g. a river from a 3D gazetteer) gets the same one-sided buffer."""
+    line = LineString([(0, 0, 400), (1, 0, 390), (2, 0, 380)])
+
+    relation = SpatialRelation(relation="left_bank", category="buffer")
+    config = BufferConfig(distance_m=111320, buffer_from="boundary", side="left", inferred=False)  # ~1 degree
+
+    result_shape = shape(apply_spatial_relation(mapping(line), relation, config))
+    assert result_shape.contains(Point(1, 0.5))  # North of line (left)
+    assert not result_shape.contains(Point(1, -0.5))  # South of line (right)
+
+
 def test_clipping():
     """Test all four clipping directions produce the correct half of the reference geometry."""
     # 10x10 degree square centred at (5,5): lon 0-10, lat 0-10

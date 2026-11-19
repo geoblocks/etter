@@ -297,8 +297,9 @@ def _one_sided_buffer(geom: BaseGeometry, distance_m: float, side: str) -> BaseG
             clipped_parts.append(part_buffer)
             continue
 
-        # Build a clip polygon: original part coords + reversed offset coords
-        clip_coords = list(part.coords) + off_coords[::-1]
+        # Build a clip polygon: original part coords + reversed offset coords. offset_curve drops Z,
+        # so the part's coords are cut to 2D too: a ring cannot mix 2D and 3D points.
+        clip_coords = [coord[:2] for coord in part.coords] + off_coords[::-1]
         clip_poly = Polygon(clip_coords).buffer(0)  # buffer(0) fixes self-intersections
         clipped_parts.append(part_buffer.intersection(clip_poly))
 
