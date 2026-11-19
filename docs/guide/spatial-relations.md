@@ -115,9 +115,9 @@ area = apply_spatial_relation(
 
 See [`SpatialRelationConfig`](../api/etter.html#SpatialRelationConfig) and [`RelationConfig`](../api/etter.html#RelationConfig) for all available options.
 
-## Output Geometry Format
+## Geometry Formats
 
-By default `apply_spatial_relation()` returns a GeoJSON geometry dict. Use the `geometry_format` parameter to request WKT or WKB instead:
+`apply_spatial_relation()` takes the reference geometry, in WGS84, as a GeoJSON dict, a WKT or hex-encoded WKB string, WKB as `bytes`, `bytearray` or `memoryview` (what database drivers return for a binary column) or a shapely geometry, alone or in a list. By default it returns a GeoJSON geometry dict. Use the `geometry_format` parameter to request WKT or WKB instead:
 
 ```python
 from etter import apply_spatial_relation
@@ -153,6 +153,13 @@ feature_wkt = convert_feature_geometry(feature, "wkt")
 ```
 
 ### Using the area in SQL
+
+If the reference geometry comes from your database, fetch it as WKB (`ST_AsBinary(geometry)`) and ask for WKB back: on a large outline (a canton, 24,000 vertices), GeoJSON parsing and serialisation take most of the time, about 30 ms against 2 ms in WKB for `in`.
+
+```python
+row = conn.execute(text("SELECT ST_AsBinary(geometry) FROM canton WHERE name = :name"), {"name": ref.name}).one()
+area = apply_spatial_relation(row[0], geo_query.spatial_relation, geo_query.buffer_config, geometry_format="wkb")
+```
 
 Pass the area as a bound parameter and parse it in a scalar subquery, so the database parses it once per query:
 

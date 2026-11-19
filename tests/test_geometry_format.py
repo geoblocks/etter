@@ -4,7 +4,9 @@ Tests for geometry output format conversion.
 
 import re
 
-from shapely.geometry import mapping
+import pytest
+import shapely
+from shapely.geometry import mapping, shape
 
 from etter.geometry_format import convert_feature_geometry, convert_geometry
 from etter.models import BufferConfig, SpatialRelation
@@ -134,3 +136,50 @@ class TestApplySpatialRelationFormat:
         result = apply_spatial_relation(POINT_GEOM, relation, config, geometry_format="wkt")
         assert isinstance(result, str)
         assert result.startswith("POLYGON")
+
+
+POLYGON_GEOM = {"type": "Polygon", "coordinates": [[[6.6, 46.5], [6.7, 46.5], [6.7, 46.55], [6.6, 46.55], [6.6, 46.5]]]}
+POLYGON = shape(POLYGON_GEOM)
+
+
+class TestApplySpatialRelationInput:
+    """The reference geometry can be given in any of the output formats, or as a shapely geometry."""
+
+    @pytest.mark.parametrize(
+        "geometry",
+        [POLYGON, POLYGON.wkt, POLYGON.wkb_hex, POLYGON.wkb, bytearray(POLYGON.wkb), memoryview(POLYGON.wkb)],
+        ids=["shapely", "wkt", "wkb-hex", "wkb-bytes", "wkb-bytearray", "wkb-memoryview"],
+    )
+    @pytest.mark.parametrize(
+        ("relation", "config"),
+        [
+            (SpatialRelation(relation="in", category="containment"), None),
+            (SpatialRelation(relation="near", category="buffer"), BufferConfig(distance_m=5000, buffer_from="center")),
+            (
+                SpatialRelation(relation="north_of", category="directional"),
+                BufferConfig(distance_m=10000, buffer_from="center"),
+            ),
+            (SpatialRelation(relation="northern_part_of", category="clipping"), None),
+        ],
+        ids=["containment", "buffer", "directional", "clipping"],
+    )
+    def test_same_result_as_geojson(self, geometry, relation, config):
+        expected = shape(apply_spatial_relation(POLYGON_GEOM, relation, config and config.model_copy()))
+        result = shape(apply_spatial_relation(geometry, relation, config and config.model_copy()))
+        assert result.equals_exact(expected, 1e-9)
+
+    def test_list_of_mixed_formats_is_unioned(self):
+        other = shapely.affinity.translate(POLYGON, xoff=0.2)
+        relation = SpatialRelation(relation="in", category="containment")
+        result = shape(apply_spatial_relation([POLYGON_GEOM, other.wkb], relation))
+        assert result.equals(POLYGON.union(other))
+
+    def test_wkb_in_wkb_out_containment(self):
+        relation = SpatialRelation(relation="in", category="containment")
+        result = apply_spatial_relation(POLYGON.wkb_hex, relation, geometry_format="wkb")
+        assert shapely.from_wkb(result).equals_exact(POLYGON, 0)
+
+    def test_unparsable_string_raises(self):
+        relation = SpatialRelation(relation="in", category="containment")
+        with pytest.raises(ValueError):
+            apply_spatial_relation("not a geometry", relation)

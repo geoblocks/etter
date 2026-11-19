@@ -10,13 +10,13 @@ import math
 
 from pyproj import Geod, Transformer
 from shapely import clip_by_rect, transform
-from shapely.geometry import MultiLineString, Point, mapping, shape
+from shapely.geometry import MultiLineString, Point
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.linestring import LineString
 from shapely.geometry.polygon import Polygon
 from shapely.ops import linemerge, unary_union
 
-from .geometry_format import convert_geometry
+from .geometry_format import GeometryInput, format_geometry, parse_geometry
 from .models import BufferConfig, GeoJsonGeometry, GeometryFormat, SpatialRelation
 from .spatial_config import RelationConfig, SpatialRelationConfig
 
@@ -126,7 +126,7 @@ def _refine_buffer_config(
 
 
 def apply_spatial_relation(
-    geometry: GeoJsonGeometry | list[GeoJsonGeometry],
+    geometry: GeometryInput | list[GeometryInput],
     relation: SpatialRelation,
     buffer_config: BufferConfig | None = None,
     spatial_config: SpatialRelationConfig | None = None,
@@ -145,7 +145,9 @@ def apply_spatial_relation(
     Other relations, and point or line references, keep the default distance.
 
     Args:
-        geometry: GeoJSON geometry dict or non-empty list of dicts (WGS84).
+        geometry: Reference geometry in WGS84, or a non-empty list of them: a GeoJSON dict,
+            a WKT or hex-encoded WKB string (as ``geometry_format`` returns), WKB bytes, or
+            a shapely geometry.
         relation: Spatial relation to apply.
         buffer_config: Required for buffer/directional relations.
         spatial_config: Relation registry; defaults to the module-level singleton.
@@ -157,11 +159,9 @@ def apply_spatial_relation(
     if isinstance(geometry, list):
         if not geometry:
             raise ValueError("geometry list must not be empty")
-        geom = unary_union([shape(g) for g in geometry])
-        geom_dict: GeoJsonGeometry = mapping(geom)
+        geom = unary_union([parse_geometry(g) for g in geometry])
     else:
-        geom = shape(geometry)
-        geom_dict = geometry
+        geom = parse_geometry(geometry)
 
     cfg = spatial_config if spatial_config is not None else _DEFAULT_SPATIAL_CONFIG
 
@@ -179,7 +179,9 @@ def apply_spatial_relation(
             )
             result = _apply_buffer(geom, fallback_config)
         else:
-            result = geom_dict
+            if isinstance(geometry, dict) and geometry_format == "geojson":
+                return geometry  # Unchanged reference: no round trip through shapely.
+            result = geom
     elif relation.category == "buffer":
         if buffer_config is None:
             raise ValueError(f"Buffer relation '{relation.relation}' requires buffer_config")
@@ -198,10 +200,10 @@ def apply_spatial_relation(
     else:
         raise ValueError(f"Unknown relation category: '{relation.category}'")
 
-    return convert_geometry(result, geometry_format)
+    return format_geometry(result, geometry_format)
 
 
-def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> GeoJsonGeometry:
+def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> BaseGeometry:
     """
     Clip a geometry to a directional half-plane using its bounding box midpoint.
 
@@ -222,12 +224,12 @@ def _apply_clipping(geom: BaseGeometry, clip_direction: str) -> GeoJsonGeometry:
         clipped = clip_by_rect(geom, minx, miny, midx, maxy)
 
     if clipped.is_empty:
-        return mapping(geom)  # Fallback — should never happen for a valid half-plane clip
+        return geom  # Fallback — should never happen for a valid half-plane clip
 
-    return mapping(clipped)
+    return clipped
 
 
-def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> GeoJsonGeometry:
+def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> BaseGeometry:
     """
     Apply buffer operation to geometry.
 
@@ -261,9 +263,9 @@ def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> GeoJsonGeometry:
             buffered_local = buffered_local.difference(geom_local)
 
     if buffered_local.is_empty:
-        return mapping(geom)  # Fallback if erosion eliminates geometry
+        return geom  # Fallback if erosion eliminates geometry
 
-    return mapping(transform(buffered_local, to_wgs84.transform, include_z=None, interleaved=False))
+    return transform(buffered_local, to_wgs84.transform, include_z=None, interleaved=False)
 
 
 def _collect_line_parts(geom: BaseGeometry) -> list[LineString]:
@@ -332,7 +334,7 @@ def _apply_directional(
     config: BufferConfig,
     direction_degrees: float,
     sector_angle_degrees: float,
-) -> GeoJsonGeometry:
+) -> BaseGeometry:
     """
     Create a directional sector wedge from the geometry centroid.
 
@@ -368,4 +370,4 @@ def _apply_directional(
     if sector.is_empty or not sector.is_valid:
         sector = sector.buffer(0)  # Fix invalid geometry
 
-    return mapping(sector)
+    return sector
