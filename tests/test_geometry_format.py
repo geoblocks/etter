@@ -7,6 +7,7 @@ import re
 import pytest
 import shapely
 from shapely.geometry import mapping, shape
+from shapely.geometry.base import BaseGeometry
 
 from etter.geometry_format import convert_feature_geometry, convert_geometry
 from etter.models import BufferConfig, SpatialRelation
@@ -44,6 +45,14 @@ class TestConvertGeometry:
         decoded = bytes.fromhex(result)
         assert len(decoded) > 0
 
+    def test_unknown_format_raises(self):
+        with pytest.raises(ValueError, match="Unknown geometry format"):
+            convert_geometry(POINT_GEOM, "Shapely")  # type: ignore[arg-type]
+
+    def test_shapely_point(self):
+        result = convert_geometry(POINT_GEOM, "shapely")
+        assert result.equals(shape(POINT_GEOM))
+
     def test_wkt_polygon(self):
         from shapely.geometry import Polygon
 
@@ -76,6 +85,12 @@ class TestConvertFeatureGeometry:
         result = convert_feature_geometry(POINT_FEATURE, "wkb")
         assert isinstance(result["geometry"], str)
         assert re.fullmatch(r"[0-9a-fA-F]+", result["geometry"])
+
+    def test_shapely_replaces_geometry(self):
+        result = convert_feature_geometry(POINT_FEATURE, "shapely")
+        assert isinstance(result["geometry"], BaseGeometry)
+        assert result["properties"] == POINT_FEATURE["properties"]
+        assert POINT_FEATURE["geometry"] is POINT_GEOM
 
     def test_other_fields_preserved(self):
         result = convert_feature_geometry(POINT_FEATURE, "wkt")
@@ -129,6 +144,19 @@ class TestApplySpatialRelationFormat:
         result = apply_spatial_relation(POINT_GEOM, relation, config, geometry_format="wkb")
         assert isinstance(result, str)
         assert re.fullmatch(r"[0-9a-fA-F]+", result)
+
+    def test_shapely_buffer(self):
+        relation = SpatialRelation(relation="near", category="buffer")
+        config = BufferConfig(distance_m=5000, buffer_from="center")
+        result = apply_spatial_relation(POINT_GEOM, relation, config, geometry_format="shapely")
+        assert isinstance(result, BaseGeometry)
+        assert mapping(result) == apply_spatial_relation(POINT_GEOM, relation, config)
+
+    def test_shapely_containment_returns_reference(self):
+        relation = SpatialRelation(relation="in", category="containment")
+        result = apply_spatial_relation(POLYGON.wkb, relation, geometry_format="shapely")
+        assert isinstance(result, BaseGeometry)
+        assert result.equals_exact(POLYGON, 0)
 
     def test_wkt_directional(self):
         relation = SpatialRelation(relation="north_of", category="directional")

@@ -117,7 +117,7 @@ See [`SpatialRelationConfig`](../api/etter.html#SpatialRelationConfig) and [`Rel
 
 ## Geometry Formats
 
-`apply_spatial_relation()` takes the reference geometry, in WGS84, as a GeoJSON dict, a WKT or hex-encoded WKB string, WKB as `bytes`, `bytearray` or `memoryview` (what database drivers return for a binary column) or a shapely geometry, alone or in a list. By default it returns a GeoJSON geometry dict. Use the `geometry_format` parameter to request WKT or WKB instead:
+`apply_spatial_relation()` takes the reference geometry, in WGS84, as a GeoJSON dict, a WKT or hex-encoded WKB string, WKB as `bytes`, `bytearray` or `memoryview` (what database drivers return for a binary column) or a shapely geometry, alone or in a list. By default it returns a GeoJSON geometry dict. Use the `geometry_format` parameter to request WKT, WKB or a shapely geometry instead:
 
 ```python
 from etter import apply_spatial_relation
@@ -139,6 +139,11 @@ result_wkt = apply_spatial_relation(
 # WKB hex string
 result_wkb = apply_spatial_relation(
     geometry, relation, buffer_config, geometry_format="wkb"
+)
+
+# shapely geometry
+result_shape = apply_spatial_relation(
+    geometry, relation, buffer_config, geometry_format="shapely"
 )
 ```
 
@@ -169,6 +174,8 @@ WHERE ST_Intersects(geometry, (SELECT ST_GeomFromWKB(decode(:area, 'hex'), 4326)
 ```
 
 `:area` is the hex string from `geometry_format="wkb"`; with `"wkt"`, use `ST_GeomFromText(:area, 4326)`. Written without the subquery, `ST_Intersects(geometry, ST_GeomFromWKB(...))` can be evaluated again for every candidate row: once a driver such as asyncpg reuses a prepared statement with a generic plan, the parse is not folded into a constant, and a large area (a canton, a merged river) makes each query take seconds.
+
+If you also need the area as GeoJSON (to return it, or to log it), ask for `geometry_format="shapely"` and write each format once from the result, instead of parsing one back to get the other: `shapely.to_wkb(area, hex=True)` for `:area` in the query above, and `shapely.geometry.mapping(area)` for GeoJSON.
 
 
 ## Querying Available Relations

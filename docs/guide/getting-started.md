@@ -119,7 +119,7 @@ area = apply_spatial_relation(
 )
 ```
 
-Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `(SELECT ST_GeomFromText(:area, 4326))` in PostGIS). See [Using the area in SQL](./spatial-relations#using-the-area-in-sql).
+Use `geometry_format="wkt"` or `"wkb"` to get a value you can hand straight to your database (e.g. `(SELECT ST_GeomFromText(:area, 4326))` in PostGIS), or `"shapely"` to get the geometry itself and write it in several formats. See [Using the area in SQL](./spatial-relations#using-the-area-in-sql).
 
 ## Understanding the Result
 
@@ -127,7 +127,7 @@ A [`GeoQuery`](../api/etter.html#GeoQuery) has four parts you will use:
 
 - **`spatial_relation`**: the relation name (`"north_of"`) and its category (`containment`, `buffer`, `directional` or `clipping`). `explicit_distance` holds the distance in metres when the query states one ("within 5 km").
 - **`reference_location`**: the place as named in the query (`name`) and the LLM's guess at its kind (`type`, e.g. `"city"`, `"lake"`). Pass both to your datasource's `search`.
-- **`buffer_config`**: how far to buffer, for buffer and directional relations; `None` for containment and clipping. `inferred=True` means the distance is a default rather than something the user said. `apply_spatial_relation` then replaces it with a value sized to the reference geometry and updates `buffer_config.distance_m` in place — in the example above, 10 000 m becomes 1 500 m for Lausanne. See [Area-Based Distance Inference](./spatial-relations#area-based-distance-inference).
+- **`buffer_config`**: how far to buffer, for buffer and directional relations; `None` for containment and clipping. `inferred=True` means the distance is a default rather than something the user said. `apply_spatial_relation` then replaces it with a value sized to the reference geometry and updates `buffer_config.distance_m` in place — in the example above, 10 000 m becomes 1 500 m for Lausanne. A config you keep and reuse across calls is changed too: pass `buffer_config.model_copy()` instead. See [Area-Based Distance Inference](./spatial-relations#area-based-distance-inference).
 - **`confidence_breakdown`**: scores between 0 and 1 for the whole parse (`overall`), the location and the relation, plus the LLM's `reasoning`. See [confidence and strict mode](./using-the-parser#confidence-and-strict-mode).
 
 ## Next Steps
