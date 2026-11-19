@@ -63,7 +63,8 @@ bump and build `CHANGELOG.md`.
 visibility rules apply:
 
 - **Bumps the version and shows up in `CHANGELOG.md`**: `feat` (minor), `fix` / `perf`
-  (patch), `revert` (patch), or any type with a `!`/`BREAKING CHANGE:` footer (major).
+  (patch), `revert` (patch), or any type with a `!`/`BREAKING CHANGE:` footer (major;
+  minor while the version is below 1.0, as `bump-minor-pre-major` is set).
 - **Parsed but hidden from `CHANGELOG.md`, no version bump**: `refactor`, `chore`, `docs`,
   `style`, `test`, `build`, `ci`. These commits are still folded into the next release's
   commit range — they just never bumped the version or appeared themselves.
