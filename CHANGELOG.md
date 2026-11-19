@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/geoblocks/etter/compare/v0.9.0...v0.10.0) (2026-11-19)
+
+
+### Features
+
+* return the area as a shapely geometry on request ([#391](https://github.com/geoblocks/etter/issues/391)) ([4043f41](https://github.com/geoblocks/etter/commit/4043f41754359e2e0559434587c175bf1ef2d106))
+
 ## [0.9.0](https://github.com/geoblocks/etter/compare/v0.8.0...v0.9.0) (2026-11-19)
 
 
