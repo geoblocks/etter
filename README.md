@@ -53,6 +53,18 @@ Parent application handles feature/activity filtering and combines it with etter
 pip install etter
 ```
 
+etter depends on `langchain-core` only. Install your model provider, and `langchain` for `init_chat_model` as in the Quick Start:
+
+```bash
+pip install langchain langchain-openai
+```
+
+With the file-backed datasources (SwissNames3D, swissBOUNDARIES3D, IGN BD-CARTO), which need geopandas:
+
+```bash
+pip install "etter[files]"
+```
+
 With PostGIS datasource support:
 
 ```bash

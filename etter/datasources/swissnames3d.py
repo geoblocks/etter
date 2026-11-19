@@ -8,17 +8,18 @@ Data source: https://www.swisstopo.admin.ch/en/landscape-model-swissnames3d
 """
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import geopandas as gpd
-import pandas as pd
 from geojson import Feature
 from shapely import force_2d
 from shapely.geometry import mapping
 
-from .geo_dataframe_source import GeoDataFrameSource
-from .location_types import TypeMap, get_matching_types, merge_segments, to_serializable
+from .geo_dataframe_source import GeoDataFrameSource, _require_files_extra, to_serializable
+from .location_types import TypeMap, get_matching_types, merge_segments
 from .text import normalize_name
+
+if TYPE_CHECKING:
+    import geopandas as gpd
 
 # Map normalized, grouped types to their OBJEKTART values.
 # Each type groups related OBJEKTART values (e.g., lake groups: See, Seeteil).
@@ -165,6 +166,7 @@ class SwissNames3DSource(GeoDataFrameSource):
     """
 
     def __init__(self, data_path: str | Path, layer: str | None = None) -> None:
+        _require_files_extra()
         self._data_path = Path(data_path)
         self._layer = layer
         self._gdf: gpd.GeoDataFrame | None = None
@@ -177,6 +179,8 @@ class SwissNames3DSource(GeoDataFrameSource):
 
     def _load_data(self) -> None:
         """Load SwissNames3D data and build the name index."""
+        import geopandas as gpd
+
         if self._data_path.is_dir():
             self._load_from_directory()
         else:
@@ -209,6 +213,9 @@ class SwissNames3DSource(GeoDataFrameSource):
 
     def _load_from_directory(self) -> None:
         """Load and concatenate all SwissNames3D shapefiles from a directory."""
+        import geopandas as gpd
+        import pandas as pd
+
         # Look for the 3 standard SwissNames3D shapefiles
         shapefile_names = ["swissNAMES3D_PKT", "swissNAMES3D_LIN", "swissNAMES3D_PLY"]
         gdfs: list[gpd.GeoDataFrame] = []

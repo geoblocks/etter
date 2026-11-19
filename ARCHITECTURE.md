@@ -446,7 +446,7 @@ docker compose -f demo/docker-compose.yml up
 To use `PostGISDataSource` outside the demo (e.g., in your own application):
 
 ```bash
-pip install etter[postgis]          # installs sqlalchemy + geoalchemy2
+pip install etter[postgis]          # installs sqlalchemy
 pip install psycopg2-binary         # or your preferred driver
 ```
 

@@ -22,12 +22,10 @@ classifiers     = [
     "Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
-    "langchain>=1.2",
+    "langchain-core>=1.2",
     "pydantic>=2.12",
     "shapely>=2.1.2",
     "pyproj>=3.7",
-    "geopandas>=1.1",
-    "rapidfuzz>=3.14",
     "geojson>=3.2",
 ]
 
@@ -39,11 +37,16 @@ Changelog     = "https://github.com/geoblocks/etter/blob/main/CHANGELOG.md"
 "Issue Tracker" = "https://github.com/geoblocks/etter/issues"
 
 [project.optional-dependencies]
+# File-backed datasources: SwissNames3DSource, SwissBoundaries3DSource, IGNBDCartoSource
+files = [
+    "geopandas>=1.1",
+    "rapidfuzz>=3.14",
+]
 postgis = [
     "sqlalchemy>=2.0",
-    "geoalchemy2>=0.15",
 ]
 dev = [
+    "langchain>=1.2",
     "langchain-anthropic>=1.5.6",
     "langchain-openai>=1.1.14",
     "pytest>=9.0.3",
@@ -60,7 +63,8 @@ dev = [
     # PostGIS integration tests
     "testcontainers[postgres]>=4.14.2",
     "psycopg2-binary>=2.9",
-    "etter[postgis]",
+    "geoalchemy2>=0.15",  # geopandas to_postgis() in test fixtures
+    "etter[postgis,files]",
 ]
 
 [build-system]
