@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.9.0](https://github.com/geoblocks/etter/compare/v0.8.0...v0.9.0) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* etter no longer installs langchain, geopandas, pandas or rapidfuzz. Install `langchain` to use `init_chat_model`, and `etter[files]` to use SwissNames3DSource, SwissBoundaries3DSource or IGNBDCartoSource; code that imports geopandas or pandas itself must declare them.
+
+### Features
+
+* accept WKB input and skip work on large outlines ([#389](https://github.com/geoblocks/etter/issues/389)) ([d1122ae](https://github.com/geoblocks/etter/commit/d1122aea3485db222dfefecaff0f10bc431b7152))
+* size only proximity distances to the reference area ([#388](https://github.com/geoblocks/etter/issues/388)) ([18474a8](https://github.com/geoblocks/etter/commit/18474a8c582c1f57e39b4adf9365874bd0879b7a))
+* trim core dependencies to what the parser needs ([#384](https://github.com/geoblocks/etter/issues/384)) ([bdd4f2b](https://github.com/geoblocks/etter/commit/bdd4f2b8aa6ec7e73d1dfea82612904a53180a6d))
+
+
+### Bug Fixes
+
+* one-sided buffer on lines with Z coordinates ([#387](https://github.com/geoblocks/etter/issues/387)) ([c797c3b](https://github.com/geoblocks/etter/commit/c797c3b28d527ce0a50a8475f48c0c2929bc8ac8))
+* replace the deprecated shapely.ops.transform ([#385](https://github.com/geoblocks/etter/issues/385)) ([1ed05c1](https://github.com/geoblocks/etter/commit/1ed05c1128bc5ad6aee69c2ed821e7b2837306f3))
+
+
+### Documentation
+
+* review and restructure the guide ([#319](https://github.com/geoblocks/etter/issues/319)) ([ca1736f](https://github.com/geoblocks/etter/commit/ca1736fb7d2ed60154191d362adc41fcff87f2ef))
+
 ## [0.8.0](https://github.com/geoblocks/etter/compare/v0.7.1...v0.8.0) (2026-09-22)
 
 
