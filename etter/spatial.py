@@ -7,12 +7,12 @@ Shapely is used internally for geometry operations.
 """
 
 from pyproj import Geod, Transformer
-from shapely import clip_by_rect
+from shapely import clip_by_rect, transform
 from shapely.geometry import MultiLineString, mapping, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry.linestring import LineString
 from shapely.geometry.polygon import Polygon
-from shapely.ops import linemerge, transform, unary_union
+from shapely.ops import linemerge, unary_union
 
 from .geometry_format import convert_geometry
 from .models import BufferConfig, GeoJsonGeometry, GeometryFormat, SpatialRelation
@@ -226,7 +226,7 @@ def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> GeoJsonGeometry:
     cx, cy = geom.centroid.x, geom.centroid.y
     to_local, to_wgs84 = _local_transformers(cx, cy)
 
-    geom_local = transform(to_local.transform, geom)
+    geom_local = transform(geom, to_local.transform, include_z=None, interleaved=False)
 
     if config.buffer_from == "center":
         buffered_local = geom_local.centroid.buffer(abs(config.distance_m))
@@ -242,7 +242,7 @@ def _apply_buffer(geom: BaseGeometry, config: BufferConfig) -> GeoJsonGeometry:
     if buffered_local.is_empty:
         return mapping(geom)  # Fallback if erosion eliminates geometry
 
-    return mapping(transform(to_wgs84.transform, buffered_local))
+    return mapping(transform(buffered_local, to_wgs84.transform, include_z=None, interleaved=False))
 
 
 def _collect_line_parts(geom: BaseGeometry) -> list[LineString]:
