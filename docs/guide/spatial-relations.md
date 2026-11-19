@@ -149,6 +149,17 @@ feature_wkt = convert_feature_geometry(feature, "wkt")
 # feature_wkt["geometry"] is now a WKT string
 ```
 
+### Using the area in SQL
+
+Pass the area as a bound parameter and parse it in a scalar subquery, so the database parses it once per query:
+
+```sql
+SELECT id FROM hike
+WHERE ST_Intersects(geometry, (SELECT ST_GeomFromWKB(decode(:area, 'hex'), 4326)))
+```
+
+`:area` is the hex string from `geometry_format="wkb"`; with `"wkt"`, use `ST_GeomFromText(:area, 4326)`. Written without the subquery, `ST_Intersects(geometry, ST_GeomFromWKB(...))` can be evaluated again for every candidate row: once a driver such as asyncpg reuses a prepared statement with a generic plan, the parse is not folded into a constant, and a large area (a canton, a merged river) makes each query take seconds.
+
 
 ## Querying Available Relations
 
