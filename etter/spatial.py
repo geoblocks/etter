@@ -16,7 +16,7 @@ from shapely.ops import linemerge, unary_union
 
 from .geometry_format import convert_geometry
 from .models import BufferConfig, GeoJsonGeometry, GeometryFormat, SpatialRelation
-from .spatial_config import SpatialRelationConfig
+from .spatial_config import RelationConfig, SpatialRelationConfig
 
 _DEFAULT_SPATIAL_CONFIG = SpatialRelationConfig()  # Module-level singleton for default spatial relation configuration.
 _GEOD = Geod(ellps="WGS84")  # Geodesic calculator for accurate area and arc computation.
@@ -41,6 +41,9 @@ _AREA_DISTANCE_BRACKETS: list[tuple[float, int]] = [
     (500_000_000, 5_000),  # < 500 km² → 5 000 m
 ]
 _AREA_DISTANCE_DEFAULT = 15_000  # ≥ 500 km² → 15 000 m
+
+# "in" a point or line (a peak, a river) cannot contain anything: buffer it by this much instead.
+_POINT_LINE_CONTAINMENT_BUFFER_M = 500
 
 # Erosion distances mirror the positive brackets (negative values).
 _AREA_EROSION_BRACKETS: list[tuple[float, int]] = [
@@ -88,22 +91,33 @@ def _refine_buffer_config(
     geom: BaseGeometry,
     buffer_config: BufferConfig,
     relation: SpatialRelation,
+    relation_config: RelationConfig | None,
 ) -> BufferConfig:
     """Replace inferred distance with an area-based estimate.
 
-    Only acts when ``buffer_config.inferred`` is True and no explicit distance
-    was stated by the user (``relation.explicit_distance is None``).  The
-    geometry area drives bracket selection so that tiny features get small
-    buffers and large regions get large ones.
+    Only acts when ``buffer_config.inferred`` is True, no explicit distance
+    was stated by the user (``relation.explicit_distance is None``) and the
+    relation's config sets ``scale_with_area``.  The geometry area drives
+    bracket selection so that tiny features get small buffers and large
+    regions get large ones. A point or line has no area to size from, so it
+    keeps the relation's default.
 
     Returns the (possibly updated) BufferConfig — mutates in place for
     consistency with the rest of the pipeline.
     """
-    if not buffer_config.inferred or relation.explicit_distance is not None:
+    if (
+        not buffer_config.inferred
+        or relation.explicit_distance is not None
+        or relation_config is None
+        or not relation_config.scale_with_area
+    ):
+        return buffer_config
+
+    area = _area_m2(geom)
+    if area == 0:
         return buffer_config
 
     erosion = buffer_config.distance_m < 0
-    area = _area_m2(geom)
     buffer_config.distance_m = _infer_distance_from_area(area, erosion)
     return buffer_config
 
@@ -122,9 +136,10 @@ def apply_spatial_relation(
     produce a single coherent search area.
 
     When ``buffer_config.inferred`` is True (i.e. no explicit distance was
-    stated), the buffer distance is refined from the actual geometry area so
-    that small features receive small buffers and large regions receive large
-    ones.
+    stated) and the relation's config sets ``scale_with_area``, the buffer
+    distance is refined from the reference polygon's area so that small
+    features receive small buffers and large regions receive large ones.
+    Other relations, and point or line references, keep the default distance.
 
     Args:
         geometry: GeoJSON geometry dict or non-empty list of dicts (WGS84).
@@ -145,17 +160,19 @@ def apply_spatial_relation(
         geom = shape(geometry)
         geom_dict = geometry
 
+    cfg = spatial_config if spatial_config is not None else _DEFAULT_SPATIAL_CONFIG
+
     # Refine inferred buffer distance from geometry area before dispatching.
-    if buffer_config is not None and buffer_config.inferred:
-        buffer_config = _refine_buffer_config(geom, buffer_config, relation)
+    if buffer_config is not None:
+        buffer_config = _refine_buffer_config(geom, buffer_config, relation, cfg.relations.get(relation.relation))
 
     if relation.category == "containment":
         if geom.geom_type in ("Point", "MultiPoint", "LineString", "MultiLineString"):
             # A point/line reference can't meaningfully "contain" anything (a search
             # target almost never touches an exact point or crosses a line exactly);
-            # fall back to a buffer sized from the reference's own (zero) area.
-            fallback_config = _refine_buffer_config(
-                geom, BufferConfig(distance_m=0, buffer_from="boundary", inferred=True), relation
+            # fall back to a small fixed buffer.
+            fallback_config = BufferConfig(
+                distance_m=_POINT_LINE_CONTAINMENT_BUFFER_M, buffer_from="boundary", inferred=False
             )
             result = _apply_buffer(geom, fallback_config)
         else:
@@ -167,13 +184,11 @@ def apply_spatial_relation(
     elif relation.category == "directional":
         if buffer_config is None:
             raise ValueError(f"Directional relation '{relation.relation}' requires buffer_config")
-        cfg = spatial_config if spatial_config is not None else _DEFAULT_SPATIAL_CONFIG
         relation_config = cfg.get_config(relation.relation)
         direction = relation_config.direction_angle_degrees or 0
         sector_angle = relation_config.sector_angle_degrees or 90
         result = _apply_directional(geom, buffer_config, direction, sector_angle)
     elif relation.category == "clipping":
-        cfg = spatial_config if spatial_config is not None else _DEFAULT_SPATIAL_CONFIG
         relation_config = cfg.get_config(relation.relation)
         clip_direction = relation_config.clip_direction or "north"
         result = _apply_clipping(geom, clip_direction)

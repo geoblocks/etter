@@ -2,10 +2,16 @@
 Tests for spatial operations module.
 """
 
+import pytest
 from shapely.geometry import LineString, Point, Polygon, mapping, shape
 
 from etter.models import BufferConfig, SpatialRelation
 from etter.spatial import apply_spatial_relation
+from etter.spatial_config import SpatialRelationConfig
+
+# About 7,600 km² at 47°N: above the largest area bracket.
+_LARGE_POLYGON = {"type": "Polygon", "coordinates": [[[7, 46.5], [8, 46.5], [8, 47.5], [7, 47.5], [7, 46.5]]]}
+_POINT = {"type": "Point", "coordinates": [7.5, 47.0]}
 
 
 def test_containment_polygon_passthrough():
@@ -271,3 +277,61 @@ def test_list_input_containment_union():
 
     assert result.contains(shape(poly1))
     assert result.contains(shape(poly2))
+
+
+def _default_buffer_config(relation: str) -> tuple[SpatialRelation, BufferConfig]:
+    """The relation and the inferred default buffer config the parser would produce for it."""
+    config = SpatialRelationConfig().get_config(relation)
+    assert config.default_distance_m is not None
+    buffer_config = BufferConfig(
+        distance_m=config.default_distance_m,
+        buffer_from=config.buffer_from or "center",
+        ring_only=config.ring_only,
+        side=config.side,
+        inferred=True,
+    )
+    return SpatialRelation(relation=relation, category=config.category), buffer_config
+
+
+@pytest.mark.parametrize(
+    ("relation", "expected_m"),
+    [
+        # Sized to the reference: a large polygon gets the largest bracket.
+        ("near", 15_000),
+        ("in_the_heart_of", -2_000),
+        ("north_of", 15_000),
+        # Fixed width whatever the reference: the relation's own default.
+        ("around", 1_000),
+        ("along", 500),
+        ("left_bank", 500),
+        ("on_shores_of", 1_000),
+        ("bordering", 2_000),
+    ],
+)
+def test_inferred_distance_on_polygon(relation: str, expected_m: int) -> None:
+    spatial_relation, buffer_config = _default_buffer_config(relation)
+    apply_spatial_relation(_LARGE_POLYGON, spatial_relation, buffer_config)
+    assert buffer_config.distance_m == expected_m
+
+
+@pytest.mark.parametrize("relation", ["near", "north_of", "around"])
+def test_inferred_distance_on_point_keeps_default(relation: str) -> None:
+    """A point has no area to size from: the relation's default is kept, not the smallest bracket."""
+    spatial_relation, buffer_config = _default_buffer_config(relation)
+    default = buffer_config.distance_m
+    apply_spatial_relation(_POINT, spatial_relation, buffer_config)
+    assert buffer_config.distance_m == default
+
+
+def test_explicit_distance_on_polygon_is_kept() -> None:
+    spatial_relation = SpatialRelation(relation="near", category="buffer", explicit_distance=3_000)
+    buffer_config = BufferConfig(distance_m=3_000, buffer_from="center", inferred=False)
+    apply_spatial_relation(_LARGE_POLYGON, spatial_relation, buffer_config)
+    assert buffer_config.distance_m == 3_000
+
+
+def test_containment_point_fallback_is_500_m() -> None:
+    result = shape(apply_spatial_relation(_POINT, SpatialRelation(relation="in", category="containment")))
+    minx, _, maxx, _ = result.bounds
+    # 1,000 m across at 47°N, where a degree of longitude is about 75.9 km.
+    assert (maxx - minx) * 75_900 == pytest.approx(1_000, rel=0.02)

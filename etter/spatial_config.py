@@ -23,6 +23,8 @@ class RelationConfig:
         ring_only: Exclude reference feature to create ring buffer
         sector_angle_degrees: Angular sector for directional queries
         direction_angle_degrees: Direction angle in degrees (0=North, 90=East, 180=South, 270=West, clockwise)
+        scale_with_area: When the query states no distance, size it to the reference polygon's area
+            instead of using default_distance_m (see apply_spatial_relation)
     """
 
     name: str
@@ -35,6 +37,7 @@ class RelationConfig:
     sector_angle_degrees: float | None = None
     direction_angle_degrees: float | None = None
     clip_direction: Literal["north", "south", "east", "west"] | None = None
+    scale_with_area: bool = False
 
 
 class SpatialRelationConfig:
@@ -79,6 +82,7 @@ class SpatialRelationConfig:
                 description="Proximity search with default 5km radius",
                 default_distance_m=5000,
                 buffer_from="center",
+                scale_with_area=True,
             )
         )
 
@@ -132,6 +136,7 @@ class SpatialRelationConfig:
                 description="Central area excluding periphery (negative buffer - erosion)",
                 default_distance_m=-500,
                 buffer_from="boundary",
+                scale_with_area=True,
             )
         )
 
@@ -199,6 +204,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector north of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=0,
             )
@@ -210,6 +216,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector south of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=180,
             )
@@ -221,6 +228,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector east of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=90,
             )
@@ -232,6 +240,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector west of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=270,
             )
@@ -244,6 +253,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector northeast of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=45,
             )
@@ -255,6 +265,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector southeast of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=135,
             )
@@ -266,6 +277,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector southwest of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=225,
             )
@@ -277,6 +289,7 @@ class SpatialRelationConfig:
                 category="directional",
                 description="Directional sector northwest of reference",
                 default_distance_m=10000,
+                scale_with_area=True,
                 sector_angle_degrees=90,
                 direction_angle_degrees=315,
             )

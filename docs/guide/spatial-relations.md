@@ -67,16 +67,18 @@ The 10 km default only applies until the geometry is known: when the query state
 
 The "Default distance" values above are what the parser writes into `buffer_config.distance_m` when the query states no distance; the config is then flagged `inferred=True`. When the query does state a distance ("within 5km", "30 min walk"), `SpatialRelation.explicit_distance` overrides the default and the config is flagged `inferred=False`.
 
-At geometry time, `apply_spatial_relation()` replaces an inferred default: it computes the geodesic area of the reference geometry (via `pyproj.Geod`) and picks a distance from area-based brackets instead. An explicit distance is never changed:
+At geometry time, `apply_spatial_relation()` replaces an inferred default for `near`, `in_the_heart_of` and the directional relations: it computes the geodesic area of the reference geometry (via `pyproj.Geod`) and picks a distance from area-based brackets instead. An explicit distance is never changed:
 
 | Geometry area | Proximity default | Erosion default |
 |---|---|---|
-| < 1 km² (point, station) | 500 m | −200 m |
+| < 1 km² (station, pond) | 500 m | −200 m |
 | 1–50 km² (town, small lake) | 1 500 m | −500 m |
 | 50–500 km² (city, medium region) | 5 000 m | −1 000 m |
 | ≥ 500 km² (canton, country) | 15 000 m | −2 000 m |
 
 This means the same relation (e.g. `near`) produces a smaller buffer around a village than around a canton, when the query doesn't state a distance explicitly.
+
+The other buffer relations (`around`, `along`, `left_bank`, `right_bank`, `on_shores_of`, `bordering`) describe a fixed width, so they keep their default: the shore of a large lake is still a 1 km ring. A point or line reference (a peak, a river) has no area to size from, so it keeps the relation's default too: `near` a peak stays 5 km.
 
 ## Registering Custom Relations
 
@@ -101,8 +103,9 @@ The `description` is shown to the LLM, so write it as guidance for when to pick 
 
 - **Buffer**: `ring_only=True` subtracts the reference geometry to leave only the surrounding ring (requires `buffer_from="boundary"`); `side="left"` or `"right"` buffers one side of a linear feature only.
 - **Directional**: `direction_angle_degrees` sets the sector's direction (0 = N, 90 = E, 180 = S, 270 = W) and `sector_angle_degrees` its width.
+- **Buffer and directional**: `scale_with_area=True` sizes the distance to the reference polygon when the query states none (see [Area-Based Distance Inference](#area-based-distance-inference)); by default the relation keeps `default_distance_m`.
 
-For directional and clipping relations, `apply_spatial_relation()` reads these options from the config, so pass the same one to it — otherwise it only knows the built-ins and raises `UnknownRelationError`:
+For directional and clipping relations, and for `scale_with_area`, `apply_spatial_relation()` reads these options from the config, so pass the same one to it — otherwise it only knows the built-ins, and raises `UnknownRelationError` for a custom directional or clipping relation:
 
 ```python
 area = apply_spatial_relation(
