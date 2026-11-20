@@ -130,22 +130,20 @@ def build_geo_prompt_template(
     additional_instructions: str | None = None,
 ) -> ChatPromptTemplate:
     """
-    Build complete prompt template with system message, examples, and user message.
+    Build complete prompt template: one system message (prompt, instructions, examples) and the user message.
 
     Args:
         spatial_config: Spatial relation configuration for injecting available relations
         include_examples: Whether to include few-shot examples (default: True)
         available_types: Concrete types available in the datasource (e.g., ["lake", "river", "city"]).
                         If provided, will be included in the prompt to help the LLM choose appropriate types.
-        additional_instructions: Free-form text injected as a system message after the main system prompt. Use this to inject
+        additional_instructions: Free-form text added to the system message after the main prompt. Use this to inject
                                  caller-specific rules (region-specific endonyms, domain aliases,
                                  organization-specific place names) without forking the default prompt.
 
     Returns:
         ChatPromptTemplate ready for formatting
     """
-    messages = []
-
     # System message with spatial relations - inject the spatial_relations here
     spatial_relations_text = format_spatial_relations(spatial_config)
 
@@ -159,33 +157,28 @@ The following {len(available_types)} concrete types are available in the datasou
 
 When inferring type, prefer these concrete types for better matching."""
 
-    system_prompt = SYSTEM_PROMPT.format(
-        spatial_relations=spatial_relations_text, available_types_info=available_types_info
-    )
-    # Escape braces for ChatPromptTemplate
-    system_prompt = system_prompt.replace("{", "{{").replace("}", "}}")
-    messages.append(("system", system_prompt))
+    sections = [
+        SYSTEM_PROMPT.format(spatial_relations=spatial_relations_text, available_types_info=available_types_info)
+    ]
 
     if additional_instructions:
-        escaped = additional_instructions.replace("{", "{{").replace("}", "}}")
-        messages.append(("system", escaped))
+        sections.append(additional_instructions)
 
     # Few-shot examples (optional but recommended)
     if include_examples:
         examples_text = format_examples_for_prompt()
-        examples_message = f"""EXAMPLES:
+        sections.append(f"""EXAMPLES:
 
 The following examples demonstrate correct parsing for various query types:
 
-{examples_text}"""
-        # Escape braces for ChatPromptTemplate
-        examples_message = examples_message.replace("{", "{{").replace("}", "}}")
-        messages.append(("system", examples_message))
+{examples_text}""")
+
+    # One system message: some providers reject more than one.
+    # Escape braces for ChatPromptTemplate
+    system_prompt = "\n\n".join(sections).replace("{", "{{").replace("}", "}}")
 
     # User message template - only this has a placeholder for format_messages
-    messages.append(("user", USER_TEMPLATE))
-
-    return ChatPromptTemplate.from_messages(messages)
+    return ChatPromptTemplate.from_messages([("system", system_prompt), ("user", USER_TEMPLATE)])
 
 
 def format_spatial_relations(config: SpatialRelationConfig) -> str:

@@ -106,7 +106,7 @@ See [Registering Custom Relations](./spatial-relations#registering-custom-relati
 
 ## Additional Instructions
 
-Pass `additional_instructions` to inject caller-specific rules into the prompt without forking the default system prompt. The text is added as a system message after the main prompt and before the few-shot examples.
+Pass `additional_instructions` to inject caller-specific rules into the prompt without forking the default system prompt. The text is added to the system message, after the main prompt and before the few-shot examples.
 
 Typical uses: region-specific endonyms, domain aliases, or organization-specific place names.
 
