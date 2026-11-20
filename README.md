@@ -178,7 +178,7 @@ Main class for parsing queries.
 - `strict_mode`: Raise `LowConfidenceError` instead of warning (default `False`)
 - `include_examples`: Include few-shot examples in the prompt (default `True`)
 - `datasource`: `GeoDataSource` instance — informs the LLM of available concrete types
-- `additional_instructions`: Free-form text injected as a system message after the main prompt and before few-shot examples. Use for region-specific endonyms, domain aliases, or organization-specific place names.
+- `additional_instructions`: Free-form text added to the system message after the main prompt and before few-shot examples. Use for region-specific endonyms, domain aliases, or organization-specific place names.
 
 ### GeoQuery
 
